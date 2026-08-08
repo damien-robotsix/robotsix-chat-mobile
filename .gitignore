@@ -5,7 +5,6 @@ build/
 *.iml
 .idea/
 .vscode/
-*.lock
 
 # Android
 android/.gradle/
