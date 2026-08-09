@@ -44,9 +44,44 @@ android {
         versionName flutterVersionName
     }
 
+    signingConfigs {
+        release {
+            // Prefer environment variables (CI) over key.properties (local).
+            def keystoreBase64 = System.getenv("KEYSTORE_BASE64")
+            if (keystoreBase64 != null && !keystoreBase64.isEmpty()) {
+                def keystoreFile = rootProject.file("release.keystore")
+                keystoreFile.withOutputStream { out ->
+                    out.write(keystoreBase64.decodeBase64())
+                }
+                storeFile keystoreFile
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            } else {
+                def keystoreProperties = new Properties()
+                def keystorePropertiesFile = rootProject.file("key.properties")
+                if (keystorePropertiesFile.exists()) {
+                    keystorePropertiesFile.withReader("UTF-8") { reader ->
+                        keystoreProperties.load(reader)
+                    }
+                    storeFile rootProject.file(keystoreProperties['storeFile'])
+                    storePassword keystoreProperties['storePassword']
+                    keyAlias keystoreProperties['keyAlias']
+                    keyPassword keystoreProperties['keyPassword']
+                } else {
+                    // Fall back to debug keystore for local development builds.
+                    storeFile signingConfigs.debug.storeFile
+                    storePassword signingConfigs.debug.storePassword
+                    keyAlias signingConfigs.debug.keyAlias
+                    keyPassword signingConfigs.debug.keyPassword
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
 }

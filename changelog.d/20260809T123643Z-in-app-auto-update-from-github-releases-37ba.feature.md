@@ -1,0 +1,1 @@
+In-app auto-update from GitHub Releases: the app checks for newer versions on startup and in Settings, downloads the signed APK, and launches the Android package installer for a one-tap update. Adds release-signing config to CI with keystore managed via GitHub Actions secrets.

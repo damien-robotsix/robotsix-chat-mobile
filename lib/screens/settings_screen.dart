@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../main.dart';
+import '../services/update_service.dart';
+
 /// Settings screen for configuring the backend connection.
 ///
 /// Stores the backend base URL and API token.  Currently held in-memory
@@ -28,6 +31,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
       const SnackBar(content: Text('Settings saved (in-memory)')),
     );
     Navigator.pop(context);
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      final result = await UpdateService().checkForUpdate();
+      if (!mounted) return;
+      switch (result.status) {
+        case UpdateStatus.updateAvailable:
+          showUpdateDialog(context, result);
+        case UpdateStatus.upToDate:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Up to date (v${result.currentVersion})'),
+            ),
+          );
+        case UpdateStatus.error:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Update check failed: ${result.errorMessage}'),
+            ),
+          );
+      }
+    } on Exception {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Update check failed')),
+      );
+    }
   }
 
   @override
@@ -59,6 +90,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: _checkForUpdate,
+              icon: const Icon(Icons.system_update),
+              label: const Text('Check for Updates'),
+            ),
+            const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save),
