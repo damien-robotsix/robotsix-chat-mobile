@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../services/api_service.dart';
 import '../services/update_service.dart';
 
 /// Settings screen for configuring the backend connection.
 ///
-/// Stores the backend base URL and API token.  Currently held in-memory
-/// during the session; persistent storage (e.g. flutter_secure_storage)
-/// will be added in a future iteration.
+/// Persists the backend base URL and API token via [ApiService]'s
+/// storage helpers so settings survive app restarts.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -20,17 +20,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _tokenController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final url = await ApiService.getBaseUrl();
+    if (url != null && url.isNotEmpty && mounted) {
+      setState(() {
+        _urlController.text = url;
+      });
+    }
+    final token = await ApiService.getToken();
+    if (token != null && mounted) {
+      setState(() {
+        _tokenController.text = token;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _urlController.dispose();
     _tokenController.dispose();
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
+    await ApiService.saveBaseUrl(_urlController.text.trim());
+    final token = _tokenController.text.trim();
+    if (token.isNotEmpty) {
+      await ApiService.saveToken(token);
+    } else {
+      await ApiService.clearToken();
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved (in-memory)')),
+      const SnackBar(content: Text('Settings saved')),
     );
     Navigator.pop(context);
+  }
+
+  Future<void> _clearToken() async {
+    await ApiService.clearToken();
+    if (!mounted) return;
+    setState(() {
+      _tokenController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Token cleared')),
+    );
   }
 
   Future<void> _checkForUpdate() async {
@@ -94,6 +134,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _checkForUpdate,
               icon: const Icon(Icons.system_update),
               label: const Text('Check for Updates'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _clearToken,
+              icon: const Icon(Icons.logout),
+              label: const Text('Clear Token'),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
