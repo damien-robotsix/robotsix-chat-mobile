@@ -1,0 +1,1 @@
+Bootstrap robotsix-mill integration: add `.robotsix-mill/config.yaml` (Dart language) and enable periodic workflows (pin_bump, repo_description_sync, changelog_autofill, health, audit, copy_paste, survey, completeness_check).
