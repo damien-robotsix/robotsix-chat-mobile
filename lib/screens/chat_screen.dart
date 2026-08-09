@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../main.dart';
 import '../models/chat_message.dart';
+import '../services/update_service.dart';
 
 /// Placeholder chat screen.
 ///
@@ -18,6 +20,24 @@ class _ChatScreenState extends State<ChatScreen> {
   final _messages = <ChatMessage>[];
   final _controller = TextEditingController();
   int _nextId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdate();
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      final result = await UpdateService().checkForUpdate();
+      if (!mounted) return;
+      if (result.status == UpdateStatus.updateAvailable) {
+        showUpdateDialog(context, result);
+      }
+    } on Exception {
+      // Update check is non-critical; silently ignore failures.
+    }
+  }
 
   @override
   void dispose() {
