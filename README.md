@@ -71,7 +71,31 @@ The Settings screen (gear icon on the chat screen) lets you configure:
 - **Backend Base URL** — the robotsix-chat server endpoint (e.g. `https://chat.example.com`)
 - **API Key / Token** — authentication credential for the chat backend
 
-These are stored locally on-device (currently in-memory; persistent storage TBD).
+These are stored locally on-device via `shared_preferences` (persistent across app restarts).
+
+## Installing the CI APK
+
+Every push and PR to `main` produces a debug APK via GitHub Actions. To install it:
+
+1. Open the [Actions](https://github.com/damien-robotsix/robotsix-chat-mobile/actions) tab.
+2. Select the workflow run for your branch / PR.
+3. Scroll to **Artifacts** and download `app-debug`.
+4. Unzip and sideload the `.apk` onto your Android device, or drag it onto a running emulator:
+
+   ```bash
+   adb install app-debug.apk
+   ```
+
+> **Note:** The CI build uses `--debug` (unsigned). Release builds require signing keys that are not stored in this repository.
+
+## Manual smoke test
+
+After installing the APK and pointing it at a live robotsix-chat backend:
+
+1. **Configure the backend** — open Settings (gear icon), enter the **Backend Base URL** and **API Key** for your robotsix-chat instance.
+2. **Open a chat** — return to the chat screen; the app should connect and be ready.
+3. **Send a message** — type a message and tap send. The message should appear in the chat history.
+4. **Receive an SSE response** — the agent's reply should stream back in real time as the response arrives.
 
 ## License
 

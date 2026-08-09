@@ -15,6 +15,7 @@ modules:
       - "changelog.d/"
       - "changelog.d/20260808T101102Z-bootstrap-robotsix-chat-mobile-app-repos-450d.feature.md"
       - "changelog.d/20260808T211527Z-bring-robotsix-chat-mobile-up-to-repo-ba-e8d3.misc.md"
+      - "changelog.d/20260809T110803Z-add-ci-build-job-producing-an-installabl-82d8.feature.md"
       - "docs/modules.yaml"
       - "lib/"
       - "pubspec.yaml"
