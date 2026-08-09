@@ -1,0 +1,1 @@
+Rewired the app to use the real chat backend endpoints: `POST /chat` with SSE streaming reply (token/done/error frames), session management (`GET/POST/DELETE /sessions`, `POST /sessions/{id}/close`), and history (`GET /history`). Auth is now behind a pluggable `AuthProvider` interface with a Bearer-token stub for v1.

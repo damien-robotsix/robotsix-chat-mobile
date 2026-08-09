@@ -1,21 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:robotsix_chat_mobile/services/api_service.dart';
+import 'package:robotsix_chat_mobile/services/auth_provider.dart';
 
 void main() {
   group('ApiService', () {
-    test('can be constructed with baseUrl and optional token', () {
-      final svc = ApiService(baseUrl: 'https://chat.example.com');
+    test('can be constructed with baseUrl and authProvider', () {
+      final svc = ApiService(
+        baseUrl: 'https://chat.example.com',
+        authProvider: const TokenAuthProvider(),
+      );
       expect(svc.baseUrl, 'https://chat.example.com');
-      expect(svc.token, isNull);
-
-      final svcWithToken =
-          ApiService(baseUrl: 'https://chat.example.com', token: 'tok-123');
-      expect(svcWithToken.token, 'tok-123');
     });
 
-    test('constructor is const', () {
-      const svc = ApiService(baseUrl: 'https://chat.example.com');
+    test('can be constructed with a token', () {
+      final svc = ApiService(
+        baseUrl: 'https://chat.example.com',
+        authProvider: const TokenAuthProvider(token: 'tok-123'),
+      );
       expect(svc.baseUrl, 'https://chat.example.com');
     });
   });
@@ -31,6 +33,75 @@ void main() {
       const ex = ApiException(500, 'Internal Server Error');
       expect(ex.toString(), contains('500'));
       expect(ex.toString(), contains('Internal Server Error'));
+    });
+  });
+
+  group('ChatEvent', () {
+    test('TokenEvent stores content', () {
+      const ev = TokenEvent('hello');
+      expect(ev.content, 'hello');
+    });
+
+    test('DoneEvent stores sessionId and timestamp', () {
+      const ev = DoneEvent(sessionId: 's1', timestamp: 1.5);
+      expect(ev.sessionId, 's1');
+      expect(ev.timestamp, 1.5);
+    });
+
+    test('ErrorEvent stores message, code, and optional correlationId', () {
+      const ev = ErrorEvent(
+        message: 'bad request',
+        code: 'BAD_REQ',
+        correlationId: 'abc-123',
+      );
+      expect(ev.message, 'bad request');
+      expect(ev.code, 'BAD_REQ');
+      expect(ev.correlationId, 'abc-123');
+    });
+
+    test('ErrorEvent correlationId can be null', () {
+      const ev = ErrorEvent(message: 'oops', code: 'ERR');
+      expect(ev.correlationId, isNull);
+    });
+  });
+
+  group('ChatSession', () {
+    test('fromJson parses session_id, title, turn_count', () {
+      final session = ChatSession.fromJson({
+        'session_id': 's1',
+        'title': 'My chat',
+        'turn_count': 3,
+      });
+      expect(session.sessionId, 's1');
+      expect(session.title, 'My chat');
+      expect(session.turnCount, 3);
+    });
+
+    test('fromJson handles missing optional fields', () {
+      final session = ChatSession.fromJson({'session_id': 's2'});
+      expect(session.sessionId, 's2');
+      expect(session.title, isNull);
+      expect(session.turnCount, isNull);
+    });
+  });
+
+  group('TokenAuthProvider', () {
+    test('returns Authorization header when token is set', () async {
+      const provider = TokenAuthProvider(token: 'secret');
+      final headers = await provider.requestHeaders();
+      expect(headers['Authorization'], 'Bearer secret');
+    });
+
+    test('returns empty map when token is null', () async {
+      const provider = TokenAuthProvider();
+      final headers = await provider.requestHeaders();
+      expect(headers, isEmpty);
+    });
+
+    test('returns empty map when token is empty', () async {
+      const provider = TokenAuthProvider(token: '');
+      final headers = await provider.requestHeaders();
+      expect(headers, isEmpty);
     });
   });
 }

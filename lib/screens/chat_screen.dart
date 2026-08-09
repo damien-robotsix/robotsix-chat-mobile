@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../main.dart';
@@ -5,7 +7,7 @@ import '../models/chat_message.dart';
 import '../services/api_service.dart';
 import '../services/update_service.dart';
 
-/// Chat screen backed by [ApiService].
+/// Chat screen backed by [ApiService] with SSE streaming.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -19,6 +21,8 @@ class _ChatScreenState extends State<ChatScreen> {
   int _nextId = 0;
   ApiService? _apiService;
   bool _isLoading = false;
+  String? _sessionId;
+  StreamSubscription<ChatEvent>? _activeStream;
 
   @override
   void initState() {
@@ -50,6 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _activeStream?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -73,7 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _messages.add(ChatMessage(
         id: agentMsgId,
-        text: '...',
+        text: '',
         isUser: false,
         timestamp: DateTime.now(),
       ));
@@ -81,12 +86,52 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       _apiService ??= await ApiService.fromStorage();
-      final response = await _apiService!.sendMessage(text);
-      if (!mounted) return;
-      setState(() {
-        _updateMessage(agentMsgId, response);
-        _isLoading = false;
-      });
+
+      final stream = _apiService!.sendMessage(
+        message: text,
+        sessionId: _sessionId,
+        messageId: agentMsgId,
+      );
+
+      _activeStream = stream.listen(
+        (event) {
+          if (!mounted) return;
+          switch (event) {
+            case TokenEvent(:final content):
+              setState(() {
+                _appendToMessage(agentMsgId, content);
+              });
+            case DoneEvent(:final sessionId):
+              setState(() {
+                _sessionId = sessionId;
+                _isLoading = false;
+              });
+              _activeStream = null;
+            case ErrorEvent(:final message, :final code):
+              setState(() {
+                _updateMessage(
+                    agentMsgId, 'Error [$code]: $message');
+                _isLoading = false;
+              });
+              _activeStream = null;
+          }
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _updateMessage(agentMsgId, 'Stream error: $error');
+            _isLoading = false;
+          });
+          _activeStream = null;
+        },
+        onDone: () {
+          if (!mounted) return;
+          setState(() {
+            _isLoading = false;
+          });
+          _activeStream = null;
+        },
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -105,6 +150,19 @@ class _ChatScreenState extends State<ChatScreen> {
         _updateMessage(agentMsgId, 'Network error: $e');
         _isLoading = false;
       });
+    }
+  }
+
+  void _appendToMessage(String id, String text) {
+    final idx = _messages.indexWhere((m) => m.id == id);
+    if (idx != -1) {
+      final current = _messages[idx];
+      _messages[idx] = ChatMessage(
+        id: id,
+        text: current.text + text,
+        isUser: false,
+        timestamp: current.timestamp,
+      );
     }
   }
 
