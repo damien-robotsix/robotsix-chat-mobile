@@ -25,7 +25,7 @@ lib/
   models/
     chat_message.dart        # Message data model
   services/
-    api_service.dart         # Stub API service (TODO: real backend)
+    api_service.dart         # HTTP + SSE client with token auth
 test/
   widget_test.dart           # Smoke test
 ```
