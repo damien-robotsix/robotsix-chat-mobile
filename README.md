@@ -1,6 +1,8 @@
 # robotsix-chat-mobile
 
-Mobile client for [robotsix-chat](https://github.com/damien-robotsix/robotsix-chat) — a conversational agent service. This app provides a cross-platform mobile interface for chatting with agents and receiving push-style notifications via SSE (Server-Sent Events).
+Mobile client for [robotsix-chat](https://github.com/damien-robotsix/robotsix-chat) — a conversational agent service.
+
+This repository follows the [robotsix-standards](https://github.com/damien-robotsix/robotsix-standards). This app provides a cross-platform mobile interface for chatting with agents and receiving push-style notifications via SSE (Server-Sent Events).
 
 ## Framework choice: Flutter
 
@@ -27,6 +29,10 @@ lib/
 test/
   widget_test.dart           # Smoke test
 ```
+
+## Documentation
+
+No documentation site exists for this repository yet. For now, see the [robotsix-standards](https://github.com/damien-robotsix/robotsix-standards) for cross-cutting conventions and this README for project-specific instructions.
 
 ## Getting started
 
