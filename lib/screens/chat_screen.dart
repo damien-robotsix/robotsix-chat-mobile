@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../models/chat_message.dart';
+import '../services/api_service.dart';
 import '../services/update_service.dart';
 
-/// Placeholder chat screen.
-///
-/// Displays a list of messages and a text input at the bottom.
-/// Currently uses a local in-memory list — will be backed by the
-/// [ApiService] once backend integration is implemented.
+/// Chat screen backed by [ApiService].
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -20,11 +17,23 @@ class _ChatScreenState extends State<ChatScreen> {
   final _messages = <ChatMessage>[];
   final _controller = TextEditingController();
   int _nextId = 0;
+  ApiService? _apiService;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _initApiService();
     _checkForUpdate();
+  }
+
+  Future<void> _initApiService() async {
+    try {
+      _apiService = await ApiService.fromStorage();
+    } on StateError {
+      // No base URL configured; API calls will fail gracefully
+      // with a helpful error message.
+    }
   }
 
   Future<void> _checkForUpdate() async {
@@ -45,9 +54,9 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isLoading) return;
 
     setState(() {
       _messages.add(ChatMessage(
@@ -56,14 +65,59 @@ class _ChatScreenState extends State<ChatScreen> {
         isUser: true,
         timestamp: DateTime.now(),
       ));
+      _controller.clear();
+      _isLoading = true;
+    });
+
+    final agentMsgId = '${_nextId++}';
+    setState(() {
       _messages.add(ChatMessage(
-        id: '${_nextId++}',
-        text: '[stub] This is a placeholder response.',
+        id: agentMsgId,
+        text: '...',
         isUser: false,
         timestamp: DateTime.now(),
       ));
-      _controller.clear();
     });
+
+    try {
+      _apiService ??= await ApiService.fromStorage();
+      final response = await _apiService!.sendMessage(text);
+      if (!mounted) return;
+      setState(() {
+        _updateMessage(agentMsgId, response);
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _updateMessage(agentMsgId, 'Server error: ${e.toString()}');
+        _isLoading = false;
+      });
+    } on StateError catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _updateMessage(agentMsgId, e.message);
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _updateMessage(agentMsgId, 'Network error: $e');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _updateMessage(String id, String text) {
+    final idx = _messages.indexWhere((m) => m.id == id);
+    if (idx != -1) {
+      _messages[idx] = ChatMessage(
+        id: id,
+        text: text,
+        isUser: false,
+        timestamp: _messages[idx].timestamp,
+      );
+    }
   }
 
   @override
@@ -135,10 +189,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
+                _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton.filled(
+                        icon: const Icon(Icons.send),
+                        onPressed: _sendMessage,
+                      ),
               ],
             ),
           ),
