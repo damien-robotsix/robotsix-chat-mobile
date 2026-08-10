@@ -15,6 +15,8 @@ modules:
       - "changelog.d/"
       - "changelog.d/20260808T101102Z-bootstrap-robotsix-chat-mobile-app-repos-450d.feature.md"
       - "changelog.d/20260808T211527Z-bring-robotsix-chat-mobile-up-to-repo-ba-e8d3.misc.md"
+      - "changelog.d/20260809T034200Z-robotsix-chat-mobile-bootstrap-robotsix-0cd5.misc.md"
+      - "changelog.d/20260809T034201Z-robotsix-chat-mobile-build-out-apiservic-7624.feature.md"
       - "changelog.d/20260809T110803Z-add-ci-build-job-producing-an-installabl-82d8.feature.md"
       - "changelog.d/20260809T123643Z-in-app-auto-update-from-github-releases-37ba.feature.md"
       - "changelog.d/20260809T125313Z-real-implementation-mobile-app-reflects-774a.feature.md"
