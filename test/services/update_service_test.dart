@@ -47,6 +47,7 @@ void main() {
         packageName: 'test',
         version: '0.1.0+1',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -64,6 +65,7 @@ void main() {
         packageName: 'test',
         version: '0.2.0+42',
         buildNumber: '42',
+        buildSignature: '',
       );
 
       // Latest is older → still upToDate (current is already newer)
@@ -82,6 +84,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -100,6 +103,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0+99',
         buildNumber: '99',
+        buildSignature: '',
       );
 
       // Latest is different major version.
@@ -120,6 +124,7 @@ void main() {
         packageName: 'test',
         version: '0.3.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -144,6 +149,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -161,6 +167,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -179,6 +186,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -197,6 +205,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -216,6 +225,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -234,6 +244,7 @@ void main() {
         packageName: 'test',
         version: '1.0.9',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -259,6 +270,7 @@ void main() {
         packageName: 'test',
         version: '0.1.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -279,6 +291,7 @@ void main() {
         packageName: 'test',
         version: '1.0.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -297,6 +310,7 @@ void main() {
         packageName: 'test',
         version: '0.1.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -315,6 +329,7 @@ void main() {
         packageName: 'test',
         version: '0.1.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final result = await _withMockClient(
@@ -333,6 +348,7 @@ void main() {
         packageName: 'test',
         version: '0.1.0',
         buildNumber: '1',
+        buildSignature: '',
       );
 
       final client = MockClient((request) async {

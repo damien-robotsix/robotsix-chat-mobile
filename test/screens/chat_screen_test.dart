@@ -19,6 +19,7 @@ void main() {
         packageName: 'test',
         version: '0.1.0',
         buildNumber: '1',
+        buildSignature: '',
       );
     });
 

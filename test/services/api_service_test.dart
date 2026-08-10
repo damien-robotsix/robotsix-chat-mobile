@@ -216,12 +216,12 @@ void main() {
     ///
     /// Each frame string is written as a complete SSE frame (data + double
     /// newline).  The server auto-assigns a port and returns its URL.
-    Future<Uri> _startSseServer(List<String> frames) async {
+    Future<Uri> startSseServer(List<String> frames) async {
       final server = await HttpServer.bind('localhost', 0);
       server.listen((request) {
         request.response.statusCode = 200;
         request.response.headers.contentType =
-            const ContentType('text', 'event-stream', charset: 'utf-8');
+            ContentType('text', 'event-stream', charset: 'utf-8');
         for (final frame in frames) {
           request.response.write('data: $frame\n\n');
         }
@@ -236,7 +236,7 @@ void main() {
 
     test('streams TokenEvent and DoneEvent on success', () async {
       SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
-      final uri = await _startSseServer([
+      final uri = await startSseServer([
         '{"type":"token","content":"Hello"}',
         '{"type":"done","session_id":"s1","timestamp":1.5}',
       ]);
@@ -259,7 +259,7 @@ void main() {
 
     test('streams ErrorEvent from backend error frame', () async {
       SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
-      final uri = await _startSseServer([
+      final uri = await startSseServer([
         '{"type":"error","message":"bad request","code":"BAD_REQ",'
             '"correlation_id":"abc-123"}',
       ]);
@@ -301,7 +301,7 @@ void main() {
 
     test('ignores SSE comments and empty lines', () async {
       SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
-      final uri = await _startSseServer([
+      final uri = await startSseServer([
         '{"type":"token","content":"A"}',
         '{"type":"token","content":"B"}',
       ]);
@@ -329,7 +329,7 @@ void main() {
         receivedBody = await utf8.decodeStream(request);
         request.response.statusCode = 200;
         request.response.headers.contentType =
-            const ContentType('text', 'event-stream', charset: 'utf-8');
+            ContentType('text', 'event-stream', charset: 'utf-8');
         request.response.write(
             'data: {"type":"done","session_id":"s2","timestamp":1.0}\n\n');
         request.response.close();
