@@ -100,31 +100,34 @@ class ApiService {
   // Persistent config helpers
   // ------------------------------------------------------------------
 
-  /// Persist the backend base URL so [fromStorage] can find it.
+  /// Persist the backend base URL to local storage under the key
+  /// `api_base_url` so [fromStorage] can find it.
   static Future<void> saveBaseUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_baseUrlKey, url);
   }
 
-  /// Return the stored base URL, or `null` if none has been saved.
+  /// Return the stored base URL from the `api_base_url` key, or `null`
+  /// if none has been saved.
   static Future<String?> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_baseUrlKey);
   }
 
-  /// Persist an API token for later use.
+  /// Persist an API token to local storage under the key `api_token`.
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
   }
 
-  /// Return the stored API token, or `null` if none has been saved.
+  /// Return the stored API token from the `api_token` key, or `null` if
+  /// none has been saved.
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
   }
 
-  /// Remove the stored API token (log-out).
+  /// Remove the stored API token from the `api_token` key (log-out).
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
