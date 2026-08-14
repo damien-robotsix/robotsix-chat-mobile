@@ -174,7 +174,9 @@ class UpdateService {
     try {
       final aParts = a.split('.').map(int.parse).toList();
       final bParts = b.split('.').map(int.parse).toList();
-      for (var i = 0; i < 3; i++) {
+      final maxParts =
+          aParts.length > bParts.length ? aParts.length : bParts.length;
+      for (var i = 0; i < maxParts; i++) {
         final av = i < aParts.length ? aParts[i] : 0;
         final bv = i < bParts.length ? bParts[i] : 0;
         if (av > bv) return true;
