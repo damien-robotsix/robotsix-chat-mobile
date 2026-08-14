@@ -1,0 +1,1 @@
+Fix release APK builds on a clean CI machine by falling back to the built-in debug signing config when no release keystore is configured, instead of copying debug signing fields into a custom release config (which AGP does not auto-provision a keystore for).

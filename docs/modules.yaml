@@ -20,6 +20,7 @@ modules:
       - "changelog.d/20260809T110803Z-add-ci-build-job-producing-an-installabl-82d8.feature.md"
       - "changelog.d/20260809T123643Z-in-app-auto-update-from-github-releases-37ba.feature.md"
       - "changelog.d/20260809T125313Z-real-implementation-mobile-app-reflects-774a.feature.md"
+      - "changelog.d/20260809T192420Z-ci-failure-ci-on-main-3cb3.misc.md"
       - "changelog.d/20260809T193150Z-completeness-check-scan-2-findings-2026-9f4e.feature.md"
       - "changelog.d/20260810T043931Z-add-doc-comments-to-8-undocumented-publi-aa63.doc.md"
       - "changelog.d/20260810T044301Z-add-ci-check-to-verify-changelog-d-is-fu-b7b0.misc.md"
