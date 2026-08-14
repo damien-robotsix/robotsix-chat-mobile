@@ -64,20 +64,30 @@ class UpdateService {
   static const _repoName = 'robotsix-chat-mobile';
   static const _channel = MethodChannel('com.robotsix.chat_mobile/install');
 
+  final http.Client _client;
+
+  /// Creates an [UpdateService].
+  ///
+  /// The optional [client] parameter allows injecting a custom
+  /// [http.Client] for testing.  When omitted the default
+  /// [http.Client] is used.
+  UpdateService({http.Client? client})
+      : _client = client ?? http.Client();
+
   /// Check GitHub Releases for a newer version than [currentVersion].
   ///
   /// [currentVersion] should be the semver portion of the app version
   /// (e.g. "0.1.0" from pubspec "0.1.0+1").
   Future<UpdateCheckResult> checkForUpdate() async {
     final info = await PackageInfo.fromPlatform();
-    final current = _stripBuildNumber(info.version);
+    final current = stripBuildNumber(info.version);
 
     try {
       final uri = Uri.https(
         'api.github.com',
         '/repos/$_repoOwner/$_repoName/releases/latest',
       );
-      final response = await http.get(
+      final response = await _client.get(
         uri,
         headers: {
           'Accept': 'application/vnd.github+json',
@@ -110,7 +120,7 @@ class UpdateService {
         return UpdateCheckResult.error('No APK asset found in latest release');
       }
 
-      if (_isNewer(latestVersion, current)) {
+      if (isNewer(latestVersion, current)) {
         return UpdateCheckResult.available(
           current: current,
           latest: latestVersion,
@@ -136,7 +146,7 @@ class UpdateService {
       final dir = await getApplicationCacheDirectory();
       final file = File('${dir.path}/update.apk');
 
-      final response = await http.get(Uri.parse(url));
+      final response = await _client.get(Uri.parse(url));
       if (response.statusCode != 200) {
         return false;
       }
@@ -154,17 +164,19 @@ class UpdateService {
 
   /// Strip the build number suffix from a pubspec version string.
   /// "0.1.0+1" → "0.1.0".
-  String _stripBuildNumber(String version) {
+  String stripBuildNumber(String version) {
     final idx = version.indexOf('+');
     return idx >= 0 ? version.substring(0, idx) : version;
   }
 
   /// Return true if [a] is a newer semver than [b].
-  bool _isNewer(String a, String b) {
+  bool isNewer(String a, String b) {
     try {
       final aParts = a.split('.').map(int.parse).toList();
       final bParts = b.split('.').map(int.parse).toList();
-      for (var i = 0; i < 3; i++) {
+      final maxParts =
+          aParts.length > bParts.length ? aParts.length : bParts.length;
+      for (var i = 0; i < maxParts; i++) {
         final av = i < aParts.length ? aParts[i] : 0;
         final bv = i < bParts.length ? bParts[i] : 0;
         if (av > bv) return true;
