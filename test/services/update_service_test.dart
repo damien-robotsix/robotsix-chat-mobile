@@ -18,6 +18,10 @@ void main() {
   late MockClient mockClient;
   late UpdateService service;
 
+  setUpAll(() {
+    registerFallbackValue(Uri.parse('https://example.com'));
+  });
+
   setUp(() {
     mockClient = MockClient();
     service = UpdateService(client: mockClient);
@@ -112,7 +116,7 @@ void main() {
       );
     });
 
-    Map<String, dynamic> _releaseJson({
+    Map<String, dynamic> releaseJson({
       required String tag,
       required List<Map<String, dynamic>> assets,
     }) {
@@ -122,14 +126,14 @@ void main() {
       };
     }
 
-    Map<String, dynamic> _apkAsset(String name, String url) {
+    Map<String, dynamic> apkAsset(String name, String url) {
       return {'name': name, 'browser_download_url': url};
     }
 
     test('returns available when newer release exists', () async {
-      final body = _releaseJson(
+      final body = releaseJson(
         tag: 'v$latestVersion',
-        assets: [_apkAsset('app-release.apk', apkUrl)],
+        assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
       when(
@@ -148,9 +152,9 @@ void main() {
     });
 
     test('returns upToDate when current == latest', () async {
-      final body = _releaseJson(
+      final body = releaseJson(
         tag: 'v$currentVersion',
-        assets: [_apkAsset('app-release.apk', apkUrl)],
+        assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
       when(
@@ -167,9 +171,9 @@ void main() {
     });
 
     test('returns upToDate when current > latest', () async {
-      final body = _releaseJson(
+      final body = releaseJson(
         tag: 'v0.0.9',
-        assets: [_apkAsset('app-release.apk', apkUrl)],
+        assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
       when(
@@ -241,7 +245,7 @@ void main() {
     });
 
     test('returns error when no APK asset in release', () async {
-      final body = _releaseJson(
+      final body = releaseJson(
         tag: 'v$latestVersion',
         assets: [
           {'name': 'source.zip', 'browser_download_url': 'https://example.com/src.zip'},
@@ -284,12 +288,24 @@ void main() {
     late String cacheDir;
 
     setUp(() async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('update_service_test');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async {
+          if (call.method == 'getApplicationCacheDirectory') {
+            return tempDir.path;
+          }
+          return null;
+        },
+      );
       cacheDir = (await getApplicationCacheDirectory()).path;
     });
 
     test('returns true on success', () async {
       var installInvoked = false;
-      TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
         const MethodChannel('com.robotsix.chat_mobile/install'),
         (call) async {
