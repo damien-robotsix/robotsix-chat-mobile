@@ -22,6 +22,7 @@ modules:
       - "changelog.d/20260809T125313Z-real-implementation-mobile-app-reflects-774a.feature.md"
       - "changelog.d/20260809T192420Z-ci-failure-ci-on-main-3cb3.misc.md"
       - "changelog.d/20260809T193150Z-completeness-check-scan-2-findings-2026-9f4e.feature.md"
+      - "changelog.d/20260809T193743Z-api-token-stored-unencrypted-in-sharedpr-7325.bugfix.md"
       - "changelog.d/20260809T201458Z-make-updateservice-testable-by-injecting-d203.feature.md"
       - "changelog.d/20260810T043931Z-add-doc-comments-to-8-undocumented-publi-aa63.doc.md"
       - "changelog.d/20260810T044301Z-add-ci-check-to-verify-changelog-d-is-fu-b7b0.misc.md"

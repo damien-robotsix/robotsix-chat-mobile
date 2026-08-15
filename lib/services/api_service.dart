@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_provider.dart';
@@ -114,23 +115,22 @@ class ApiService {
     return prefs.getString(_baseUrlKey);
   }
 
-  /// Persist an API token to local storage under the key `api_token`.
+  static const _secureStorage = FlutterSecureStorage();
+
+  /// Persist an API token for later use.
   static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
   }
 
   /// Return the stored API token from the `api_token` key, or `null` if
   /// none has been saved.
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    return await _secureStorage.read(key: _tokenKey);
   }
 
   /// Remove the stored API token from the `api_token` key (log-out).
   static Future<void> clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
+    await _secureStorage.delete(key: _tokenKey);
   }
 
   /// Return (or create and persist) a stable per-install client id.
