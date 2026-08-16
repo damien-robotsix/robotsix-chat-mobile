@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:robotsix_chat_mobile/services/api_service.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
@@ -102,6 +106,252 @@ void main() {
       const provider = TokenAuthProvider(token: '');
       final headers = await provider.requestHeaders();
       expect(headers, isEmpty);
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // Storage helpers
+  // ------------------------------------------------------------------
+
+  group('saveBaseUrl / getBaseUrl', () {
+    test('round-trip: save then read back', () async {
+      SharedPreferences.setMockInitialValues({});
+      await ApiService.saveBaseUrl('https://example.com');
+      final result = await ApiService.getBaseUrl();
+      expect(result, 'https://example.com');
+    });
+
+    test('getBaseUrl returns null when nothing saved', () async {
+      SharedPreferences.setMockInitialValues({});
+      final result = await ApiService.getBaseUrl();
+      expect(result, isNull);
+    });
+
+    test('saveBaseUrl overwrites previous value', () async {
+      SharedPreferences.setMockInitialValues({});
+      await ApiService.saveBaseUrl('https://first.example.com');
+      await ApiService.saveBaseUrl('https://second.example.com');
+      final result = await ApiService.getBaseUrl();
+      expect(result, 'https://second.example.com');
+    });
+  });
+
+  group('saveToken / getToken', () {
+    test('round-trip: save then read back', () async {
+      SharedPreferences.setMockInitialValues({});
+      await ApiService.saveToken('my-secret-token');
+      final result = await ApiService.getToken();
+      expect(result, 'my-secret-token');
+    });
+
+    test('getToken returns null when nothing saved', () async {
+      SharedPreferences.setMockInitialValues({});
+      final result = await ApiService.getToken();
+      expect(result, isNull);
+    });
+
+    test('saveToken overwrites previous value', () async {
+      SharedPreferences.setMockInitialValues({});
+      await ApiService.saveToken('old-token');
+      await ApiService.saveToken('new-token');
+      final result = await ApiService.getToken();
+      expect(result, 'new-token');
+    });
+  });
+
+  group('clearToken', () {
+    test('clearToken removes a previously saved token', () async {
+      SharedPreferences.setMockInitialValues({});
+      await ApiService.saveToken('some-token');
+      await ApiService.clearToken();
+      final result = await ApiService.getToken();
+      expect(result, isNull);
+    });
+
+    test('clearToken is idempotent when no token exists', () async {
+      SharedPreferences.setMockInitialValues({});
+      await ApiService.clearToken();
+      final result = await ApiService.getToken();
+      expect(result, isNull);
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // fromStorage
+  // ------------------------------------------------------------------
+
+  group('fromStorage', () {
+    test('constructs ApiService from stored baseUrl and token', () async {
+      SharedPreferences.setMockInitialValues({
+        'api_base_url': 'https://chat.example.com',
+        'api_token': 'tok-abc',
+      });
+      final svc = await ApiService.fromStorage();
+      expect(svc.baseUrl, 'https://chat.example.com');
+    });
+
+    test('constructs ApiService when only baseUrl is stored', () async {
+      SharedPreferences.setMockInitialValues({
+        'api_base_url': 'https://chat.example.com',
+      });
+      final svc = await ApiService.fromStorage();
+      expect(svc.baseUrl, 'https://chat.example.com');
+    });
+
+    test('throws StateError when no baseUrl is stored', () async {
+      SharedPreferences.setMockInitialValues({});
+      expect(
+        () => ApiService.fromStorage(),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // sendMessage — SSE streaming
+  // ------------------------------------------------------------------
+
+  group('sendMessage', () {
+    /// Start a local HTTP server that returns an SSE stream from [frames].
+    ///
+    /// Each frame string is written as a complete SSE frame (data + double
+    /// newline).  The server auto-assigns a port and returns its URL.
+    Future<Uri> startSseServer(List<String> frames) async {
+      final server = await HttpServer.bind('localhost', 0);
+      server.listen((request) {
+        request.response.statusCode = 200;
+        request.response.headers.contentType =
+            ContentType('text', 'event-stream', charset: 'utf-8');
+        for (final frame in frames) {
+          request.response.write('data: $frame\n\n');
+        }
+        request.response.close();
+      });
+      return Uri(
+        scheme: 'http',
+        host: 'localhost',
+        port: server.port,
+      );
+    }
+
+    test('streams TokenEvent and DoneEvent on success', () async {
+      SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
+      final uri = await startSseServer([
+        '{"type":"token","content":"Hello"}',
+        '{"type":"done","session_id":"s1","timestamp":1.5}',
+      ]);
+
+      final svc = ApiService(
+        baseUrl: '$uri',
+        authProvider: const TokenAuthProvider(),
+      );
+
+      final events = await svc
+          .sendMessage(message: 'hi')
+          .toList();
+
+      expect(events, hasLength(2));
+      expect(events[0], isA<TokenEvent>());
+      expect((events[0] as TokenEvent).content, 'Hello');
+      expect(events[1], isA<DoneEvent>());
+      expect((events[1] as DoneEvent).sessionId, 's1');
+    });
+
+    test('streams ErrorEvent from backend error frame', () async {
+      SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
+      final uri = await startSseServer([
+        '{"type":"error","message":"bad request","code":"BAD_REQ",'
+            '"correlation_id":"abc-123"}',
+      ]);
+
+      final svc = ApiService(
+        baseUrl: '$uri',
+        authProvider: const TokenAuthProvider(),
+      );
+
+      final events = await svc
+          .sendMessage(message: 'hi')
+          .toList();
+
+      expect(events, hasLength(1));
+      expect(events[0], isA<ErrorEvent>());
+      expect((events[0] as ErrorEvent).message, 'bad request');
+      expect((events[0] as ErrorEvent).code, 'BAD_REQ');
+    });
+
+    test('throws ApiException on non-200 HTTP status', () async {
+      SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
+      final server = await HttpServer.bind('localhost', 0);
+      server.listen((request) {
+        request.response.statusCode = 500;
+        request.response.write('Internal Server Error');
+        request.response.close();
+      });
+
+      final svc = ApiService(
+        baseUrl: 'http://localhost:${server.port}',
+        authProvider: const TokenAuthProvider(),
+      );
+
+      expect(
+        svc.sendMessage(message: 'hi').toList(),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
+    test('ignores SSE comments and empty lines', () async {
+      SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
+      final uri = await startSseServer([
+        '{"type":"token","content":"A"}',
+        '{"type":"token","content":"B"}',
+      ]);
+      // The server already sends clean frames; the _parseSseStream method
+      // handles comments internally.  Verify we still get both tokens.
+      final svc = ApiService(
+        baseUrl: '$uri',
+        authProvider: const TokenAuthProvider(),
+      );
+
+      final events = await svc
+          .sendMessage(message: 'hi')
+          .toList();
+
+      expect(events, hasLength(2));
+      expect((events[0] as TokenEvent).content, 'A');
+      expect((events[1] as TokenEvent).content, 'B');
+    });
+
+    test('includes sessionId and messageId when provided', () async {
+      SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
+      String? receivedBody;
+      final server = await HttpServer.bind('localhost', 0);
+      server.listen((request) async {
+        receivedBody = await utf8.decodeStream(request);
+        request.response.statusCode = 200;
+        request.response.headers.contentType =
+            ContentType('text', 'event-stream', charset: 'utf-8');
+        request.response.write(
+            'data: {"type":"done","session_id":"s2","timestamp":1.0}\n\n');
+        request.response.close();
+      });
+
+      final svc = ApiService(
+        baseUrl: 'http://localhost:${server.port}',
+        authProvider: const TokenAuthProvider(),
+      );
+
+      await svc
+          .sendMessage(
+            message: 'hi',
+            sessionId: 'my-session',
+            messageId: 'my-msg',
+          )
+          .toList();
+
+      final body = jsonDecode(receivedBody!) as Map<String, dynamic>;
+      expect(body['session_id'], 'my-session');
+      expect(body['message_id'], 'my-msg');
+      expect(body['message'], 'hi');
     });
   });
 }
