@@ -26,6 +26,7 @@ modules:
       - "changelog.d/20260809T201458Z-make-updateservice-testable-by-injecting-d203.feature.md"
       - "changelog.d/20260810T043931Z-add-doc-comments-to-8-undocumented-publi-aa63.doc.md"
       - "changelog.d/20260810T044301Z-add-ci-check-to-verify-changelog-d-is-fu-b7b0.misc.md"
+- "changelog.d/20260821T091053Z-add-widget-tests-for-the-settings-and-ho-c399.misc.md"
       - "changelog.d/20260821T154308Z-ci-fix-out-of-scope-ci-failure-build-ana-381b.misc.md"
       - "docs/modules.yaml"
       - "lib/"

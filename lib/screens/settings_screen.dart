@@ -111,6 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
+              key: const Key('server_url_field'),
               controller: _urlController,
               decoration: const InputDecoration(
                 labelText: 'Backend Base URL',
