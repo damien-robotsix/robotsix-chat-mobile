@@ -43,9 +43,17 @@ void main() {
   const testBaseUrl = 'https://chat.example.com';
   const testToken = 'fleet-token-abc123';
 
+  setUpAll(() {
+    registerFallbackValue(Uri.parse('https://fallback.example.com'));
+  });
+
   setUp(() {
     httpClient = MockHttpClient();
     secureStorage = MockSecureStorage();
+    when(() => secureStorage.write(
+          key: any(named: 'key'),
+          value: any(named: 'value'),
+        )).thenAnswer((_) async {});
     provider = TokenExchangeAuthProvider(
       baseUrl: testBaseUrl,
       httpClient: httpClient,
