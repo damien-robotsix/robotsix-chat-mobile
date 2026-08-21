@@ -220,7 +220,7 @@ class ApiService {
   /// and triggering the SSO re-login flow.
   Future<void> _handleUnauthorized() async {
     if (_authProvider is TokenExchangeAuthProvider) {
-      final provider = _authProvider as TokenExchangeAuthProvider;
+      final provider = _authProvider;
       await provider.clearToken();
       // Fire-and-forget — the user will see the auth error and can
       // re-login via Settings.
