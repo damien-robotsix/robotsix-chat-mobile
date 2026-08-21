@@ -164,10 +164,11 @@ class _ChatScreenState extends State<ChatScreen> {
           switch (event) {
             case TokenEvent(:final content):
               setState(() {
-                _appendToMessage('live-${_nextId}', content);
+                _appendToMessage('live-$_nextId', content);
               });
             case DoneEvent():
               // Reattachment complete — ignore Done sentinel.
+              break;
             case ErrorEvent(:final message, :final code):
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
