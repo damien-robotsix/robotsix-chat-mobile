@@ -89,6 +89,12 @@ class ApiService {
   static const _tokenKey = 'api_token';
   static const _ownerIdKey = 'owner_id';
 
+  /// The auth provider instance currently in use.
+  ///
+  /// Set by [fromStorage] and available for inspection (e.g. from the
+  /// Settings screen).
+  static AuthProvider? currentAuthProvider;
+
   /// Base URL of the robotsix-chat backend (e.g. https://chat.example.com).
   final String baseUrl;
 
@@ -161,10 +167,12 @@ class ApiService {
     if (baseUrl == null) {
       throw StateError('No base URL configured. Open Settings to configure.');
     }
-    final token = await getToken();
+    final provider = TokenExchangeAuthProvider(baseUrl: baseUrl);
+    currentAuthProvider = provider;
+    provider.initialize();
     return ApiService(
       baseUrl: baseUrl,
-      authProvider: TokenAuthProvider(token: token),
+      authProvider: provider,
     );
   }
 
@@ -210,6 +218,62 @@ class ApiService {
     final client = http.Client();
     try {
       final response = await client.send(request);
+
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        final errorBody = await response.stream.bytesToString();
+        throw ApiException(401, errorBody);
+      }
+
+      if (response.statusCode != 200) {
+        final errorBody = await response.stream.bytesToString();
+        throw ApiException(response.statusCode, errorBody);
+      }
+
+      yield* _parseSseStream(response.stream);
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Handle a 401 Unauthorized response by clearing the stored token
+  /// and triggering the SSO re-login flow.
+  Future<void> _handleUnauthorized() async {
+    if (_authProvider is TokenExchangeAuthProvider) {
+      final provider = _authProvider as TokenExchangeAuthProvider;
+      await provider.clearToken();
+      // Fire-and-forget — the user will see the auth error and can
+      // re-login via Settings.
+      provider.startLogin();
+    }
+  }
+
+  /// Stream events for an existing session.
+  ///
+  /// Reattaches to `GET /events?session_id=…` as an SSE stream so the
+  /// app can reload live history when switching sessions.
+  Stream<ChatEvent> getEvents(String sessionId) async* {
+    final uri = Uri.parse('$baseUrl/events').replace(
+      queryParameters: {'session_id': sessionId},
+    );
+    final headers = <String, String>{
+      'Accept': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      ...await _authProvider.requestHeaders(),
+    };
+
+    final request = http.Request('GET', uri);
+    request.headers.addAll(headers);
+
+    final client = http.Client();
+    try {
+      final response = await client.send(request);
+
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        final errorBody = await response.stream.bytesToString();
+        throw ApiException(401, errorBody);
+      }
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
@@ -277,6 +341,10 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await http.get(uri, headers: headers);
+    if (response.statusCode == 401) {
+      await _handleUnauthorized();
+      throw ApiException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -301,6 +369,10 @@ class ApiService {
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
     );
+    if (response.statusCode == 401) {
+      await _handleUnauthorized();
+      throw ApiException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -316,6 +388,10 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await http.delete(uri, headers: headers);
+    if (response.statusCode == 401) {
+      await _handleUnauthorized();
+      throw ApiException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -335,6 +411,10 @@ class ApiService {
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
     );
+    if (response.statusCode == 401) {
+      await _handleUnauthorized();
+      throw ApiException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -346,6 +426,10 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await http.get(uri, headers: headers);
+    if (response.statusCode == 401) {
+      await _handleUnauthorized();
+      throw ApiException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }

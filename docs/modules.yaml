@@ -13,6 +13,7 @@ modules:
       - "SECURITY.md"
       - "analysis_options.yaml"
       - "changelog.d/"
+      - "changelog.d/20260816T065014Z-wire-real-tinyauth-mobile-token-exchange-a9cb.misc.md"
       - "changelog.d/20260808T101102Z-bootstrap-robotsix-chat-mobile-app-repos-450d.feature.md"
       - "changelog.d/20260808T211527Z-bring-robotsix-chat-mobile-up-to-repo-ba-e8d3.misc.md"
       - "changelog.d/20260809T034200Z-robotsix-chat-mobile-bootstrap-robotsix-0cd5.misc.md"

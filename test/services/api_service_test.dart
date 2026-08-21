@@ -3,20 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:robotsix_chat_mobile/services/api_service.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
 
+/// Stub [AuthProvider] that returns a fixed set of headers.
+class StubAuthProvider implements AuthProvider {
+  final Map<String, String> headers;
+  const StubAuthProvider(this.headers);
+
+  @override
+  Future<Map<String, String>> requestHeaders() async => headers;
+}
+
 void main() {
   group('ApiService', () {
     test('can be constructed with baseUrl and authProvider', () {
       final svc = ApiService(
         baseUrl: 'https://chat.example.com',
-        authProvider: const TokenAuthProvider(),
-      );
-      expect(svc.baseUrl, 'https://chat.example.com');
-    });
-
-    test('can be constructed with a token', () {
-      final svc = ApiService(
-        baseUrl: 'https://chat.example.com',
-        authProvider: const TokenAuthProvider(token: 'tok-123'),
+        authProvider: const StubAuthProvider({}),
       );
       expect(svc.baseUrl, 'https://chat.example.com');
     });
@@ -85,21 +86,15 @@ void main() {
     });
   });
 
-  group('TokenAuthProvider', () {
-    test('returns Authorization header when token is set', () async {
-      const provider = TokenAuthProvider(token: 'secret');
+  group('StubAuthProvider', () {
+    test('returns provided headers', () async {
+      const provider = StubAuthProvider({'X-Custom': 'val'});
       final headers = await provider.requestHeaders();
-      expect(headers['Authorization'], 'Bearer secret');
+      expect(headers['X-Custom'], 'val');
     });
 
-    test('returns empty map when token is null', () async {
-      const provider = TokenAuthProvider();
-      final headers = await provider.requestHeaders();
-      expect(headers, isEmpty);
-    });
-
-    test('returns empty map when token is empty', () async {
-      const provider = TokenAuthProvider(token: '');
+    test('returns empty map when given empty map', () async {
+      const provider = StubAuthProvider({});
       final headers = await provider.requestHeaders();
       expect(headers, isEmpty);
     });
