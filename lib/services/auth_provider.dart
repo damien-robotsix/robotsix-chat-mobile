@@ -169,7 +169,6 @@ class TokenExchangeAuthProvider implements AuthProvider {
   /// Calls `GET $baseUrl/auth/token?code=$code`.  The backend
   /// validates the code against the SSO session and returns a
   /// Fernet-signed Bearer token as `{token: "…"}`.
-  @visibleForTesting
   Future<String> _exchangeCodeForToken(String code) async {
     final uri = Uri.parse('$baseUrl/auth/token').replace(
       queryParameters: {'code': code},
