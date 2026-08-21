@@ -197,4 +197,9 @@ class TokenExchangeAuthProvider implements AuthProvider {
     if (trimmed.isNotEmpty) return trimmed;
     throw const FormatException('Empty token in exchange response');
   }
+
+  /// Public test-accessor for [_exchangeCodeForToken].
+  @visibleForTesting
+  Future<String> exchangeCodeForTokenForTest(String code) =>
+      _exchangeCodeForToken(code);
 }
