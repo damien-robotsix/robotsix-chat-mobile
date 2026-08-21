@@ -1,14 +1,22 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 
 import 'package:robotsix_chat_mobile/services/api_service.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
+
+class MockClient extends Mock implements http.Client {}
 
 void main() {
   group('ApiService', () {
     test('can be constructed with baseUrl and authProvider', () {
       final svc = ApiService(
         baseUrl: 'https://chat.example.com',
-        authProvider: const TokenAuthProvider(),
+        authProvider: OidcTokenExchangeAuthProvider(
+          baseUrl: 'https://chat.example.com',
+        ),
       );
       expect(svc.baseUrl, 'https://chat.example.com');
     });
@@ -16,7 +24,10 @@ void main() {
     test('can be constructed with a token', () {
       final svc = ApiService(
         baseUrl: 'https://chat.example.com',
-        authProvider: const TokenAuthProvider(token: 'tok-123'),
+        authProvider: OidcTokenExchangeAuthProvider(
+          baseUrl: 'https://chat.example.com',
+          subjectToken: 'tok-123',
+        ),
       );
       expect(svc.baseUrl, 'https://chat.example.com');
     });
@@ -85,23 +96,179 @@ void main() {
     });
   });
 
-  group('TokenAuthProvider', () {
-    test('returns Authorization header when token is set', () async {
-      const provider = TokenAuthProvider(token: 'secret');
-      final headers = await provider.requestHeaders();
-      expect(headers['Authorization'], 'Bearer secret');
+  group('OidcTokenExchangeAuthProvider', () {
+    late MockClient mockClient;
+
+    setUp(() {
+      mockClient = MockClient();
     });
 
-    test('returns empty map when token is null', () async {
-      const provider = TokenAuthProvider();
+    test('returns empty map when no subject token is set', () async {
+      final provider = OidcTokenExchangeAuthProvider(
+        baseUrl: 'https://chat.example.com',
+        client: mockClient,
+      );
       final headers = await provider.requestHeaders();
       expect(headers, isEmpty);
+      verifyNever(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      );
     });
 
-    test('returns empty map when token is empty', () async {
-      const provider = TokenAuthProvider(token: '');
+    test('exchanges the subject token for an access token', () async {
+      when(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({'access_token': 'fresh-token', 'expires_in': 3600}),
+          200,
+        ),
+      );
+
+      final provider = OidcTokenExchangeAuthProvider(
+        baseUrl: 'https://chat.example.com',
+        subjectToken: 'subject-token',
+        client: mockClient,
+      );
+
       final headers = await provider.requestHeaders();
-      expect(headers, isEmpty);
+      expect(headers['Authorization'], 'Bearer fresh-token');
+
+      verify(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: jsonEncode({'token': 'subject-token'}),
+        ),
+      ).called(1);
+    });
+
+    test('reuses a cached token until it expires', () async {
+      final now = DateTime(2026, 8, 21, 12);
+      var clock = now;
+      when(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({'access_token': 'fresh-token', 'expires_in': 3600}),
+          200,
+        ),
+      );
+
+      final provider = OidcTokenExchangeAuthProvider(
+        baseUrl: 'https://chat.example.com',
+        subjectToken: 'subject-token',
+        client: mockClient,
+        clock: () => clock,
+      );
+
+      expect(
+        (await provider.requestHeaders())['Authorization'],
+        'Bearer fresh-token',
+      );
+
+      clock = now.add(const Duration(minutes: 5));
+      expect(
+        (await provider.requestHeaders())['Authorization'],
+        'Bearer fresh-token',
+      );
+
+      verify(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).called(1);
+    });
+
+    test('refreshes an expired token', () async {
+      final now = DateTime(2026, 8, 21, 12);
+      var clock = now;
+      when(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({'access_token': 'token-1', 'expires_in': 60}),
+          200,
+        ),
+      );
+
+      final provider = OidcTokenExchangeAuthProvider(
+        baseUrl: 'https://chat.example.com',
+        subjectToken: 'subject-token',
+        client: mockClient,
+        clock: () => clock,
+      );
+
+      expect(
+        (await provider.requestHeaders())['Authorization'],
+        'Bearer token-1',
+      );
+
+      when(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({'access_token': 'token-2', 'expires_in': 60}),
+          200,
+        ),
+      );
+
+      clock = now.add(const Duration(minutes: 5));
+      expect(
+        (await provider.requestHeaders())['Authorization'],
+        'Bearer token-2',
+      );
+
+      verify(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).called(2);
+    });
+
+    test('throws ApiException when the exchange fails', () async {
+      when(
+        () => mockClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer((_) async => http.Response('denied', 401));
+
+      final provider = OidcTokenExchangeAuthProvider(
+        baseUrl: 'https://chat.example.com',
+        subjectToken: 'subject-token',
+        client: mockClient,
+      );
+
+      expect(
+        () => provider.requestHeaders(),
+        throwsA(isA<ApiException>()),
+      );
     });
   });
 }
