@@ -101,6 +101,7 @@ void main() {
 
     setUp(() {
       mockClient = MockClient();
+      registerFallbackValue(Uri());
     });
 
     test('returns empty map when no subject token is set', () async {
