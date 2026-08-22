@@ -1,0 +1,1 @@
+Replace the manual Bearer-token auth provider with an OIDC token-exchange provider that exchanges a stored OIDC credential for a short-lived Bearer token via the central-deploy `POST /chat/auth/mobile-token` endpoint, caching the result until it expires.

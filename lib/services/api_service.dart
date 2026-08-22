@@ -164,7 +164,10 @@ class ApiService {
     final token = await getToken();
     return ApiService(
       baseUrl: baseUrl,
-      authProvider: TokenAuthProvider(token: token),
+      authProvider: OidcTokenExchangeAuthProvider(
+        baseUrl: baseUrl,
+        subjectToken: token,
+      ),
     );
   }
 
