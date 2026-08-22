@@ -28,6 +28,7 @@ modules:
       - "changelog.d/20260810T044301Z-add-ci-check-to-verify-changelog-d-is-fu-b7b0.misc.md"
 - "changelog.d/20260821T091053Z-add-widget-tests-for-the-settings-and-ho-c399.misc.md"
       - "changelog.d/20260821T113338Z-fix-android-build-broken-by-shared-prefe-8d2a.bugfix.md"
+      - "changelog.d/20260821T154123Z-ci-fix-out-of-scope-ci-failure-analyze-t-6c71.misc.md"
       - "changelog.d/20260821T154308Z-ci-fix-out-of-scope-ci-failure-build-ana-381b.misc.md"
       - "changelog.d/20260821T204202Z-add-unit-tests-for-chatmessage-model-cla-bba4.misc.md"
       - "docs/modules.yaml"
