@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_provider.dart';
 import '../services/update_service.dart';
 
 /// Settings screen for configuring the backend connection.
 ///
-/// Persists the backend base URL and API token via [ApiService]'s
-/// storage helpers so settings survive app restarts.
+/// Persists the backend base URL via [ApiService]'s storage helpers
+/// so settings survive app restarts.  Authentication is handled by
+/// [TokenExchangeAuthProvider] — the user logs in via fleet SSO
+/// rather than manually typing a token.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -17,7 +20,10 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _urlController = TextEditingController(text: 'https://chat.example.com');
-  final _tokenController = TextEditingController();
+
+  bool _isLoggedIn = false;
+  bool _isLoggingIn = false;
+  String _authStatus = '';
 
   @override
   void initState() {
@@ -32,29 +38,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _urlController.text = url;
       });
     }
-    final token = await ApiService.getToken();
-    if (token != null && mounted) {
+    final provider = ApiService.currentAuthProvider;
+    if (provider is TokenExchangeAuthProvider && mounted) {
+      final loggedIn = await provider.isLoggedIn;
+      final token = await provider.getToken();
       setState(() {
-        _tokenController.text = token;
+        _isLoggedIn = loggedIn;
+        _authStatus = loggedIn
+            ? 'Logged in (token: ${_maskToken(token ?? '')})'
+            : 'Not logged in';
       });
     }
+  }
+
+  String _maskToken(String token) {
+    if (token.length <= 8) return '***';
+    return '${token.substring(0, 4)}…${token.substring(token.length - 4)}';
   }
 
   @override
   void dispose() {
     _urlController.dispose();
-    _tokenController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     await ApiService.saveBaseUrl(_urlController.text.trim());
-    final token = _tokenController.text.trim();
-    if (token.isNotEmpty) {
-      await ApiService.saveToken(token);
-    } else {
-      await ApiService.clearToken();
-    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved')),
@@ -62,15 +71,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.pop(context);
   }
 
-  Future<void> _clearToken() async {
-    await ApiService.clearToken();
-    if (!mounted) return;
-    setState(() {
-      _tokenController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Token cleared')),
-    );
+  Future<void> _login() async {
+    final provider = ApiService.currentAuthProvider;
+    if (provider is! TokenExchangeAuthProvider) return;
+
+    setState(() => _isLoggingIn = true);
+
+    try {
+      final launched = await provider.startLogin();
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open login page')),
+        );
+      }
+      // The deep-link callback will handle token exchange and storage.
+      // Poll briefly for the result.
+      for (var i = 0; i < 30; i++) {
+        await Future.delayed(const Duration(seconds: 1));
+        if (!mounted) return;
+        final loggedIn = await provider.isLoggedIn;
+        if (loggedIn) {
+          setState(() {
+            _isLoggedIn = true;
+            _isLoggingIn = false;
+            _authStatus = 'Logged in';
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Login successful')),
+            );
+          }
+          return;
+        }
+      }
+      if (mounted) {
+        setState(() => _isLoggingIn = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login timed out. Please try again.')),
+        );
+      }
+    } on Exception {
+      if (mounted) {
+        setState(() => _isLoggingIn = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed')),
+        );
+      }
+    }
+  }
+
+  Future<void> _logout() async {
+    final provider = ApiService.currentAuthProvider;
+    if (provider is TokenExchangeAuthProvider) {
+      await provider.clearToken();
+      setState(() {
+        _isLoggedIn = false;
+        _authStatus = 'Not logged in';
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logged out')),
+      );
+    }
   }
 
   Future<void> _checkForUpdate() async {
@@ -121,26 +183,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _tokenController,
-              decoration: const InputDecoration(
-                labelText: 'API Token',
-                hintText: 'Enter your API token',
-                border: OutlineInputBorder(),
+            // Auth status card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _isLoggedIn ? Icons.lock_open : Icons.lock_outline,
+                          color: _isLoggedIn ? Colors.green : Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _authStatus.isNotEmpty
+                                ? _authStatus
+                                : 'Checking…',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isLoggedIn)
+                      OutlinedButton.icon(
+                        onPressed: _isLoggingIn ? null : _logout,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Log Out'),
+                      )
+                    else
+                      FilledButton.icon(
+                        onPressed: _isLoggingIn ? null : _login,
+                        icon: _isLoggingIn
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.login),
+                        label: Text(_isLoggingIn ? 'Logging in…' : 'Log In'),
+                      ),
+                  ],
+                ),
               ),
-              obscureText: true,
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: _checkForUpdate,
               icon: const Icon(Icons.system_update),
               label: const Text('Check for Updates'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _clearToken,
-              icon: const Icon(Icons.logout),
-              label: const Text('Clear Token'),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(

@@ -20,13 +20,18 @@ Flutter was chosen over React Native for this project because:
 lib/
   main.dart                  # App entry point, routing
   screens/
-    chat_screen.dart         # Chat UI placeholder
-    settings_screen.dart     # Backend URL / credential config
+    chat_screen.dart         # Chat UI with session management
+    settings_screen.dart     # Backend URL / SSO auth config
   models/
     chat_message.dart        # Message data model
   services/
-    api_service.dart         # HTTP + SSE client with token auth
+    api_service.dart         # HTTP + SSE client with session API
+    auth_provider.dart       # SSO token-exchange auth provider
+    update_service.dart      # In-app auto-update from GitHub Releases
 test/
+  services/
+    api_service_test.dart    # Unit tests for API types and models
+    update_service_test.dart # Unit tests for update service
   widget_test.dart           # Smoke test
 ```
 
@@ -68,10 +73,10 @@ flutter analyze
 
 The Settings screen (gear icon on the chat screen) lets you configure:
 
-- **Backend Base URL** — the robotsix-chat server endpoint (e.g. `https://chat.example.com`)
-- **API Key / Token** — authentication credential for the chat backend
+- **Backend Base URL** — the robotsix-chat server endpoint (e.g. `https://chat.deploy.robotsix.net`)
+- **Authentication** — log in via fleet SSO (tinyauth). The app opens the SSO login page in an external browser; after you authenticate, the SSO session is exchanged for a long-lived Bearer token stored securely on-device via `flutter_secure_storage`.
 
-These are stored locally on-device via `shared_preferences` (persistent across app restarts).
+No manual API token entry is required — the token-exchange flow handles authentication automatically.
 
 ## Installing the CI APK
 
@@ -132,10 +137,12 @@ base64 -w0 release.keystore  # use this as KEYSTORE_BASE64
 
 After installing the APK and pointing it at a live robotsix-chat backend:
 
-1. **Configure the backend** — open Settings (gear icon), enter the **Backend Base URL** and **API Key** for your robotsix-chat instance.
-2. **Open a chat** — return to the chat screen; the app should connect and be ready.
-3. **Send a message** — type a message and tap send. The message should appear in the chat history.
-4. **Receive an SSE response** — the agent's reply should stream back in real time as the response arrives.
+1. **Configure the backend** — open Settings (gear icon), enter the **Backend Base URL** for your robotsix-chat instance.
+2. **Log in** — from Settings, tap **Log In**. The app opens the fleet SSO login page in your browser. Authenticate, and the app exchanges the SSO session for a Bearer token automatically.
+3. **Open a chat** — return to the chat screen; the app should connect and be ready.
+4. **Send a message** — type a message and tap send. The message should appear in the chat history.
+5. **Receive an SSE response** — the agent's reply should stream back in real time as the response arrives.
+6. **Manage sessions** — use the sessions button (💬) to create, switch, close, or delete chat sessions.
 
 ## License
 
