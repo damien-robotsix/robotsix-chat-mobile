@@ -11,13 +11,12 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate {
-        if (project.hasProperty("android")) {
-            android {
-                compileSdkVersion 34
-            }
-        }
-    }
+    ext.flutter = [
+        compileSdkVersion: 34,
+        minSdkVersion: 24,
+        targetSdkVersion: 34,
+        ndkVersion: "25.1.8937393"
+    ]
 }
 
 subprojects {
