@@ -13,10 +13,25 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Workaround for older Flutter plugins that do not declare namespace or
-// compileSdkVersion, which are required by AGP 8.x.  Wrapped in a try/catch
-// because the Flutter Gradle plugin's included build may contribute projects
-// that are already evaluated when the subprojects block runs.
+// Provide the Flutter extension to subprojects that use the old Flutter Gradle
+// plugin API (e.g. package_info_plus v9 accesses flutter.compileSdkVersion).
+// Flutter 3.24's declarative plugin system only applies it to :app.  Must run
+// before subproject evaluation, so no afterEvaluate wrapper.
+subprojects { sub ->
+    if (sub != rootProject) {
+        sub.ext.flutter = [
+            compileSdkVersion: 34,
+            minSdkVersion: 24,
+            targetSdkVersion: 34,
+            ndkVersion: "27.0.12077973",
+        ]
+    }
+}
+
+// Fix missing namespace and compileSdkVersion on older Flutter plugins that
+// do not declare them (required by AGP 8.x).  Wrapped in try/catch because
+// the Flutter Gradle plugin's included build contributes projects that are
+// already evaluated when subprojects blocks run.
 subprojects {
     try {
         afterEvaluate { project ->
@@ -30,7 +45,7 @@ subprojects {
             }
         }
     } catch (Exception ignored) {
-        // Project already evaluated — skip.
+        // Already evaluated — skip.
     }
 }
 
