@@ -1,0 +1,1 @@
+Add TODO comments on session CRUD methods in ApiService documenting that they are implemented but not yet wired into any UI. Add unit tests for all five session management methods (listSessions, createSession, deleteSession, closeSession, getHistory).
