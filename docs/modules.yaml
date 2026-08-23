@@ -32,6 +32,7 @@ modules:
       - "changelog.d/20260821T154123Z-ci-fix-out-of-scope-ci-failure-analyze-t-6c71.misc.md"
       - "changelog.d/20260821T154308Z-ci-fix-out-of-scope-ci-failure-build-ana-381b.misc.md"
       - "changelog.d/20260821T204202Z-add-unit-tests-for-chatmessage-model-cla-bba4.misc.md"
+      - "changelog.d/20260823T214359Z-ci-fix-out-of-scope-ci-failure-build-flu-bb11.bugfix.md"
       - "docs/modules.yaml"
       - "lib/"
       - "pubspec.yaml"
