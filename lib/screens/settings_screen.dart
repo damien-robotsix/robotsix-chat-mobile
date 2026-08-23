@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_provider.dart';
 import '../services/update_service.dart';
 
 /// Settings screen for configuring the backend connection.
@@ -32,7 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _urlController.text = url;
       });
     }
-    final token = await ApiService.getToken();
+    final token = await OidcTokenExchangeAuthProvider.getSubjectToken();
     if (token != null && mounted) {
       setState(() {
         _tokenController.text = token;
@@ -51,9 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await ApiService.saveBaseUrl(_urlController.text.trim());
     final token = _tokenController.text.trim();
     if (token.isNotEmpty) {
-      await ApiService.saveToken(token);
+      await OidcTokenExchangeAuthProvider.saveSubjectToken(token);
     } else {
-      await ApiService.clearToken();
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -63,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearToken() async {
-    await ApiService.clearToken();
+    await OidcTokenExchangeAuthProvider.clearSubjectToken();
     if (!mounted) return;
     setState(() {
       _tokenController.clear();
