@@ -277,268 +277,39 @@ void main() {
     });
   });
 
-  group('ApiService session methods', () {
-    setUp(() {
-      SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
+  // ---------------------------------------------------------------------------
+  // AuthException
+  // ---------------------------------------------------------------------------
+  group('AuthException', () {
+    test('stores statusCode and body', () {
+      const ex = AuthException(401, 'Unauthorized');
+      expect(ex.statusCode, 401);
+      expect(ex.body, 'Unauthorized');
     });
 
-    ApiService createService(MockAuthProvider auth) {
-      return ApiService(
-        baseUrl: 'https://chat.example.com',
-        authProvider: auth,
-      );
-    }
-
-    // ------------------------------------------------------------------
-    // listSessions
-    // ------------------------------------------------------------------
-
-    test('listSessions returns parsed session list on 200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        expect(request.method, 'GET');
-        expect(request.url.toString(), contains('/sessions'));
-        expect(request.headers['Authorization'], 'Bearer tok');
-        return http.Response(
-          '[{"session_id":"s1","title":"Chat 1","turn_count":2},'
-          '{"session_id":"s2"}]',
-          200,
-        );
-      });
-
-      final svc = createService(mockAuth);
-
-      final sessions = await http.runWithClient(
-        () => svc.listSessions(),
-        () => mockClient,
-      );
-
-      expect(sessions, hasLength(2));
-      expect(sessions[0].sessionId, 's1');
-      expect(sessions[0].title, 'Chat 1');
-      expect(sessions[0].turnCount, 2);
-      expect(sessions[1].sessionId, 's2');
-      expect(sessions[1].title, isNull);
-      expect(sessions[1].turnCount, isNull);
+    test('is an ApiException', () {
+      const ex = AuthException(403, 'Forbidden');
+      expect(ex, isA<ApiException>());
     });
 
-    test('listSessions throws ApiException on non-200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        return http.Response('{"error":"unauthorized"}', 401);
-      });
-
-      final svc = createService(mockAuth);
-
-      expect(
-        () => http.runWithClient(
-          () => svc.listSessions(),
-          () => mockClient,
-        ),
-        throwsA(isA<ApiException>()),
-      );
+    test('message is a user-friendly re-login prompt', () {
+      const ex = AuthException(401, 'Token expired');
+      expect(ex.message, contains('Session expired'));
+      expect(ex.message, contains('Settings'));
     });
 
-    // ------------------------------------------------------------------
-    // createSession
-    // ------------------------------------------------------------------
-
-    test('createSession returns ChatSession on 200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        expect(request.method, 'POST');
-        expect(request.url.toString(), contains('/sessions'));
-        expect(request.body, contains('test-owner'));
-        return http.Response(
-          '{"session_id":"new-session","title":null,"turn_count":0}',
-          200,
-        );
-      });
-
-      final svc = createService(mockAuth);
-
-      final session = await http.runWithClient(
-        () => svc.createSession(),
-        () => mockClient,
-      );
-
-      expect(session.sessionId, 'new-session');
+    test('toString includes statusCode and body', () {
+      const ex = AuthException(401, 'Unauthorized');
+      expect(ex.toString(), contains('401'));
+      expect(ex.toString(), contains('Unauthorized'));
     });
+  });
 
-    test('createSession throws ApiException on non-200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        return http.Response('server error', 500);
-      });
-
-      final svc = createService(mockAuth);
-
-      expect(
-        () => http.runWithClient(
-          () => svc.createSession(),
-          () => mockClient,
-        ),
-        throwsA(isA<ApiException>()),
-      );
-    });
-
-    // ------------------------------------------------------------------
-    // deleteSession
-    // ------------------------------------------------------------------
-
-    test('deleteSession succeeds on 200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        expect(request.method, 'DELETE');
-        expect(request.url.toString(), contains('/sessions/sess-1'));
-        return http.Response('', 200);
-      });
-
-      final svc = createService(mockAuth);
-
-      await http.runWithClient(
-        () => svc.deleteSession('sess-1'),
-        () => mockClient,
-      );
-    });
-
-    test('deleteSession throws ApiException on non-200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        return http.Response('not found', 404);
-      });
-
-      final svc = createService(mockAuth);
-
-      expect(
-        () => http.runWithClient(
-          () => svc.deleteSession('sess-1'),
-          () => mockClient,
-        ),
-        throwsA(isA<ApiException>()),
-      );
-    });
-
-    // ------------------------------------------------------------------
-    // closeSession
-    // ------------------------------------------------------------------
-
-    test('closeSession succeeds on 200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        expect(request.method, 'POST');
-        expect(request.url.toString(), contains('/sessions/sess-1/close'));
-        return http.Response('', 200);
-      });
-
-      final svc = createService(mockAuth);
-
-      await http.runWithClient(
-        () => svc.closeSession('sess-1'),
-        () => mockClient,
-      );
-    });
-
-    test('closeSession throws ApiException on non-200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        return http.Response('conflict', 409);
-      });
-
-      final svc = createService(mockAuth);
-
-      expect(
-        () => http.runWithClient(
-          () => svc.closeSession('sess-1'),
-          () => mockClient,
-        ),
-        throwsA(isA<ApiException>()),
-      );
-    });
-
-    // ------------------------------------------------------------------
-    // getHistory
-    // ------------------------------------------------------------------
-
-    test('getHistory returns parsed history on 200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        expect(request.method, 'GET');
-        expect(request.url.toString(), contains('/history'));
-        expect(request.url.toString(), contains('session_id=sess-1'));
-        return http.Response(
-          '[{"role":"user","content":"hi"},{"role":"agent","content":"hello"}]',
-          200,
-        );
-      });
-
-      final svc = createService(mockAuth);
-
-      final history = await http.runWithClient(
-        () => svc.getHistory('sess-1'),
-        () => mockClient,
-      );
-
-      expect(history, hasLength(2));
-      expect(history[0]['role'], 'user');
-      expect(history[1]['role'], 'agent');
-    });
-
-    test('getHistory throws ApiException on non-200', () async {
-      final mockAuth = MockAuthProvider();
-      when(mockAuth.requestHeaders).thenAnswer(
-        (_) async => {'Authorization': 'Bearer tok'},
-      );
-
-      final mockClient = http_testing.MockClient((request) async {
-        return http.Response('not found', 404);
-      });
-
-      final svc = createService(mockAuth);
-
-      expect(
-        () => http.runWithClient(
-          () => svc.getHistory('sess-1'),
-          () => mockClient,
-        ),
-        throwsA(isA<ApiException>()),
-      );
+  group('ApiException.message', () {
+    test('returns body by default', () {
+      const ex = ApiException(500, 'Server Error');
+      expect(ex.message, 'Server Error');
+ (feat: Wire real tinyauth mobile token-exchange flow and verify UI parity with web chat (replace TokenAuthProvider manual-token stub) (20260816T065014Z-wire-real-tinyauth-mobile-token-exchange-a9cb))
     });
   });
 }

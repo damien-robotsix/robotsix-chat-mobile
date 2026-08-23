@@ -65,6 +65,14 @@ class _ChatScreenState extends State<ChatScreen> {
           _sessionsLoading = false;
         });
       }
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _sessionsError = e.message;
+          _sessionsLoading = false;
+        });
+        _showReLoginPrompt();
+      }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
@@ -89,6 +97,13 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         _switchToSession(session.sessionId);
         _loadSessions();
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+        _showReLoginPrompt();
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -124,6 +139,14 @@ class _ChatScreenState extends State<ChatScreen> {
           _isLoading = false;
         });
       }
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+          _isLoading = false;
+        });
+        _showReLoginPrompt();
+      }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
@@ -152,6 +175,13 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       }
       _loadSessions();
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+        _showReLoginPrompt();
+      }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -166,6 +196,13 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await _apiService!.closeSession(sessionId);
       _loadSessions();
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+        _showReLoginPrompt();
+      }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -178,6 +215,34 @@ class _ChatScreenState extends State<ChatScreen> {
   // ------------------------------------------------------------------
   // Chat
   // ------------------------------------------------------------------
+
+  /// Show a dialog prompting the user to re-authenticate after their
+  /// session has expired.
+  void _showReLoginPrompt() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Session Expired'),
+        content: const Text(
+          'Your login session has expired. '
+          'Would you like to go to Settings to log in again?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushNamed(context, '/settings');
+            },
+            child: const Text('Settings'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _checkForUpdate() async {
     try {
@@ -384,6 +449,13 @@ class _ChatScreenState extends State<ChatScreen> {
           _activeStream = null;
         },
       );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _updateMessage(agentMsgId, e.message);
+        _isLoading = false;
+      });
+      _showReLoginPrompt();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
