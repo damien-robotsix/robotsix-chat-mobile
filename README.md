@@ -69,9 +69,17 @@ flutter analyze
 The Settings screen (gear icon on the chat screen) lets you configure:
 
 - **Backend Base URL** — the robotsix-chat server endpoint (e.g. `https://chat.example.com`)
-- **API Key / Token** — authentication credential for the chat backend
 
-These are stored locally on-device via `shared_preferences` (persistent across app restarts).
+### Authentication (SSO / tinyauth)
+
+Authentication uses the fleet SSO (tinyauth) flow:
+
+1. Open **Settings** (gear icon) and enter your **Backend Base URL**.
+2. Tap **Log in with SSO** — this opens the tinyauth login page in your browser.
+3. Complete the login. The browser redirects back to the app automatically.
+4. The app stores your credentials securely in the platform keychain (`flutter_secure_storage`) and attaches a short-lived Bearer token to every API request.
+
+To log out, tap **Log out** in Settings.
 
 ## Installing the CI APK
 
@@ -132,10 +140,12 @@ base64 -w0 release.keystore  # use this as KEYSTORE_BASE64
 
 After installing the APK and pointing it at a live robotsix-chat backend:
 
-1. **Configure the backend** — open Settings (gear icon), enter the **Backend Base URL** and **API Key** for your robotsix-chat instance.
-2. **Open a chat** — return to the chat screen; the app should connect and be ready.
-3. **Send a message** — type a message and tap send. The message should appear in the chat history.
-4. **Receive an SSE response** — the agent's reply should stream back in real time as the response arrives.
+1. **Configure the backend** — open Settings (gear icon), enter the **Backend Base URL** for your robotsix-chat instance.
+2. **Log in** — tap **Log in with SSO**, complete the fleet SSO login in your browser, and wait for the app to capture the redirect.
+3. **Open a chat** — return to the chat screen; open the drawer (hamburger menu) to see your sessions. Create a new session or select an existing one.
+4. **Send a message** — type a message and tap send. The message should appear in the chat history.
+5. **Receive an SSE response** — the agent's reply should stream back in real time as the response arrives.
+6. **Session management** — use the drawer to switch between sessions, close completed sessions, or delete unwanted ones.
 
 ## License
 

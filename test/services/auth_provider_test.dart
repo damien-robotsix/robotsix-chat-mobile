@@ -603,4 +603,63 @@ void main() {
       expect(token, isNull);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // authStateChanges
+  // ---------------------------------------------------------------------------
+  group('authStateChanges', () {
+    test('emits true when subject token is saved', () async {
+      await OidcTokenExchangeAuthProvider.saveSubjectToken('test-token');
+
+      final emitted = await OidcTokenExchangeAuthProvider.authStateChanges.first;
+      expect(emitted, isTrue);
+
+      // Clean up
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      // Consume the false event from cleanup
+      await OidcTokenExchangeAuthProvider.authStateChanges.first;
+    });
+
+    test('emits false when subject token is cleared', () async {
+      await OidcTokenExchangeAuthProvider.saveSubjectToken('test-token');
+      // Consume the true event
+      await OidcTokenExchangeAuthProvider.authStateChanges.first;
+
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      final emitted = await OidcTokenExchangeAuthProvider.authStateChanges.first;
+      expect(emitted, isFalse);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // handleAuthCallback
+  // ---------------------------------------------------------------------------
+  group('handleAuthCallback', () {
+    test('extracts token from URI and persists it', () async {
+      final uri = Uri.parse('robotsixchat://auth/callback?token=my-sso-token');
+      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+
+      expect(result, 'my-sso-token');
+      final stored = await OidcTokenExchangeAuthProvider.getSubjectToken();
+      expect(stored, 'my-sso-token');
+
+      // Clean up
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await OidcTokenExchangeAuthProvider.authStateChanges.first;
+    });
+
+    test('returns null when token parameter is missing', () async {
+      final uri = Uri.parse('robotsixchat://auth/callback');
+      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+
+      expect(result, isNull);
+    });
+
+    test('returns null when token parameter is empty', () async {
+      final uri = Uri.parse('robotsixchat://auth/callback?token=');
+      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+
+      expect(result, isNull);
+    });
+  });
 }

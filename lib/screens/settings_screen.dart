@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../main.dart';
@@ -5,10 +7,13 @@ import '../services/api_service.dart';
 import '../services/auth_provider.dart';
 import '../services/update_service.dart';
 
-/// Settings screen for configuring the backend connection.
+/// Settings screen for configuring the backend connection and
+/// managing authentication.
 ///
-/// Persists the backend base URL and API token via [ApiService]'s
-/// storage helpers so settings survive app restarts.
+/// Persists the backend base URL via [ApiService]'s storage helpers
+/// so settings survive app restarts.  Authentication is handled
+/// through the fleet SSO (tinyauth) login flow — see
+/// [OidcTokenExchangeAuthProvider.startSsoLogin].
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -18,12 +23,16 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _urlController = TextEditingController(text: 'https://chat.example.com');
-  final _tokenController = TextEditingController();
+  bool _isLoggedIn = false;
+  StreamSubscription<bool>? _authSub;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _authSub = OidcTokenExchangeAuthProvider.authStateChanges.listen((v) {
+      if (mounted) setState(() => _isLoggedIn = v);
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -34,28 +43,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     }
     final token = await OidcTokenExchangeAuthProvider.getSubjectToken();
-    if (token != null && mounted) {
+    if (mounted) {
       setState(() {
-        _tokenController.text = token;
+        _isLoggedIn = token != null && token.isNotEmpty;
       });
     }
   }
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _urlController.dispose();
-    _tokenController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     await ApiService.saveBaseUrl(_urlController.text.trim());
-    final token = _tokenController.text.trim();
-    if (token.isNotEmpty) {
-      await OidcTokenExchangeAuthProvider.saveSubjectToken(token);
-    } else {
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
-    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved')),
@@ -63,14 +66,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.pop(context);
   }
 
-  Future<void> _clearToken() async {
+  Future<void> _login() async {
+    final baseUrl = _urlController.text.trim();
+    if (baseUrl.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a Backend Base URL first.'),
+        ),
+      );
+      return;
+    }
+    await ApiService.saveBaseUrl(baseUrl);
+    final ok = await OidcTokenExchangeAuthProvider.startSsoLogin(baseUrl);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the login page.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out'),
+        content: const Text('Clear your stored credentials?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     await OidcTokenExchangeAuthProvider.clearSubjectToken();
     if (!mounted) return;
-    setState(() {
-      _tokenController.clear();
-    });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Token cleared')),
+      const SnackBar(content: Text('Logged out.')),
     );
   }
 
@@ -104,6 +144,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: Padding(
@@ -122,26 +164,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _tokenController,
-              decoration: const InputDecoration(
-                labelText: 'API Token',
-                hintText: 'Enter your API token',
-                border: OutlineInputBorder(),
+            // ---------- Auth status card ----------
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _isLoggedIn ? Icons.check_circle : Icons.error_outline,
+                          color: _isLoggedIn
+                              ? Colors.green.shade700
+                              : theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isLoggedIn ? 'Authenticated' : 'Not authenticated',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isLoggedIn)
+                      OutlinedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Log out'),
+                      )
+                    else
+                      FilledButton.icon(
+                        onPressed: _login,
+                        icon: const Icon(Icons.login),
+                        label: const Text('Log in with SSO'),
+                      ),
+                  ],
+                ),
               ),
-              obscureText: true,
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: _checkForUpdate,
               icon: const Icon(Icons.system_update),
               label: const Text('Check for Updates'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _clearToken,
-              icon: const Icon(Icons.logout),
-              label: const Text('Clear Token'),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
