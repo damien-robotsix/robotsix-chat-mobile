@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:robotsix_chat_mobile/services/api_service.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
@@ -12,6 +13,8 @@ class MockClient extends Mock implements http.Client {}
 class MockAuthProvider extends Mock implements AuthProvider {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ApiService', () {
     test('can be constructed with baseUrl and authProvider', () {
       final svc = ApiService(
@@ -307,6 +310,109 @@ void main() {
     test('returns body by default', () {
       const ex = ApiException(500, 'Server Error');
       expect(ex.message, 'Server Error');
+    });
+  });
+
+  group('ApiService methods', () {
+    late MockClient mockClient;
+    late MockAuthProvider mockAuthProvider;
+    late ApiService apiService;
+
+    setUp(() {
+      // deleteSession/closeSession resolve an owner id via
+      // ApiService.getOwnerId(), which reads SharedPreferences. Without a
+      // mock store that throws MissingPluginException under `flutter test`.
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      mockClient = MockClient();
+      mockAuthProvider = MockAuthProvider();
+      registerFallbackValue(Uri());
+      when(() => mockAuthProvider.requestHeaders())
+          .thenAnswer((_) async => {'Authorization': 'Bearer test-token'});
+      apiService = ApiService(
+        baseUrl: 'https://chat.example.com',
+        authProvider: mockAuthProvider,
+        client: mockClient,
+      );
+    });
+
+    // -- deleteSession -------------------------------------------------
+
+    group('deleteSession', () {
+      test('completes on 200', () async {
+        when(() => mockClient.delete(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('', 200));
+
+        await apiService.deleteSession('s1');
+        // No exception means success.
+      });
+
+      test('throws ApiException on non-200', () async {
+        when(() => mockClient.delete(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('gone', 410));
+
+        await expectLater(
+          apiService.deleteSession('s1'),
+          throwsA(isA<ApiException>()),
+        );
+      });
+    });
+
+    // -- closeSession --------------------------------------------------
+
+    group('closeSession', () {
+      test('completes on 200', () async {
+        when(() => mockClient.post(any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body')))
+            .thenAnswer((_) async => http.Response('', 200));
+
+        await apiService.closeSession('s1');
+      });
+
+      test('throws ApiException on non-200', () async {
+        when(() => mockClient.post(any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body')))
+            .thenAnswer((_) async => http.Response('conflict', 409));
+
+        await expectLater(
+          apiService.closeSession('s1'),
+          throwsA(isA<ApiException>()),
+        );
+      });
+    });
+
+    // -- getHistory ----------------------------------------------------
+
+    group('getHistory', () {
+      test('returns parsed history list on 200', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async {
+          return http.Response(
+            jsonEncode([
+              {'role': 'user', 'content': 'hello'},
+              {'role': 'assistant', 'content': 'hi there'},
+            ]),
+            200,
+          );
+        });
+
+        final history = await apiService.getHistory('s1');
+
+        expect(history, hasLength(2));
+        expect(history[0]['role'], 'user');
+        expect(history[1]['content'], 'hi there');
+      });
+
+      test('throws ApiException on non-200', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('not found', 404));
+
+        expect(
+          apiService.getHistory('s1'),
+          throwsA(isA<ApiException>()),
+        );
+      });
     });
   });
 }
