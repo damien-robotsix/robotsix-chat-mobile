@@ -50,8 +50,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Open the drawer
-    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-    scaffold.openDrawer();
+    final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+    scaffoldState.openDrawer();
     await tester.pumpAndSettle();
 
     expect(find.text('Sessions'), findsOneWidget);
