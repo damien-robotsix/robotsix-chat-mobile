@@ -33,6 +33,7 @@ modules:
       - "changelog.d/20260821T154308Z-ci-fix-out-of-scope-ci-failure-build-ana-381b.misc.md"
       - "changelog.d/20260821T204202Z-add-unit-tests-for-chatmessage-model-cla-bba4.misc.md"
       - "changelog.d/20260823T193939Z-session-crud-methods-in-apiservice-are-f-a661.misc.md"
+      - "changelog.d/20260823T194507Z-update-roadmap-md-to-reflect-already-imp-2532.misc.md"
       - "changelog.d/20260824T121909Z-resolve-flutter-dart-ci-version-mismatch-f2c4.bugfix.md"
       - "changelog.d/20260824T140546Z-establish-a-coherent-flutter-dart-androi-cce9.bugfix.md"
       - "docs/modules.yaml"
