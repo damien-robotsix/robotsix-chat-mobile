@@ -278,13 +278,11 @@ void main() {
   });
 
   group('ApiService session methods', () {
-    late ApiService apiService;
-
     setUp(() {
       SharedPreferences.setMockInitialValues({'owner_id': 'test-owner'});
     });
 
-    ApiService _createService(MockAuthProvider auth) {
+    ApiService createService(MockAuthProvider auth) {
       return ApiService(
         baseUrl: 'https://chat.example.com',
         authProvider: auth,
@@ -312,7 +310,7 @@ void main() {
         );
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       final sessions = await http.runWithClient(
         () => svc.listSessions(),
@@ -338,7 +336,7 @@ void main() {
         return http.Response('{"error":"unauthorized"}', 401);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       expect(
         () => http.runWithClient(
@@ -369,7 +367,7 @@ void main() {
         );
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       final session = await http.runWithClient(
         () => svc.createSession(),
@@ -389,7 +387,7 @@ void main() {
         return http.Response('server error', 500);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       expect(
         () => http.runWithClient(
@@ -416,7 +414,7 @@ void main() {
         return http.Response('', 200);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       await http.runWithClient(
         () => svc.deleteSession('sess-1'),
@@ -434,7 +432,7 @@ void main() {
         return http.Response('not found', 404);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       expect(
         () => http.runWithClient(
@@ -461,7 +459,7 @@ void main() {
         return http.Response('', 200);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       await http.runWithClient(
         () => svc.closeSession('sess-1'),
@@ -479,7 +477,7 @@ void main() {
         return http.Response('conflict', 409);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       expect(
         () => http.runWithClient(
@@ -510,7 +508,7 @@ void main() {
         );
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       final history = await http.runWithClient(
         () => svc.getHistory('sess-1'),
@@ -532,7 +530,7 @@ void main() {
         return http.Response('not found', 404);
       });
 
-      final svc = _createService(mockAuth);
+      final svc = createService(mockAuth);
 
       expect(
         () => http.runWithClient(
