@@ -20,6 +20,9 @@ void main() {
     expect(find.widgetWithText(AppBar, 'robotsix-chat'), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsOneWidget);
 
+    // Drawer menu icon is present.
+    expect(find.byIcon(Icons.menu), findsOneWidget);
+
     // Empty conversation state.
     expect(
       find.widgetWithText(
@@ -32,5 +35,22 @@ void main() {
     // Message input and send action.
     expect(find.widgetWithText(TextField, 'Type a message…'), findsOneWidget);
     expect(find.byIcon(Icons.send), findsOneWidget);
+  });
+
+  testWidgets('drawer opens and shows Sessions header and New Chat button',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
+    await tester.pumpAndSettle();
+
+    // Open the drawer by tapping the menu icon.
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    // Drawer header and new-chat button are visible.
+    expect(find.text('Sessions'), findsOneWidget);
+    expect(find.text('New Chat'), findsOneWidget);
+
+    // Empty state shown when no sessions are loaded.
+    expect(find.text('No sessions yet.'), findsOneWidget);
   });
 }
