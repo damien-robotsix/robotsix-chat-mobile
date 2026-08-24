@@ -309,7 +309,6 @@ void main() {
     test('returns body by default', () {
       const ex = ApiException(500, 'Server Error');
       expect(ex.message, 'Server Error');
- (feat: Wire real tinyauth mobile token-exchange flow and verify UI parity with web chat (replace TokenAuthProvider manual-token stub) (20260816T065014Z-wire-real-tinyauth-mobile-token-exchange-a9cb))
     });
   });
 }
