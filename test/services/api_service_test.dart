@@ -2,9 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/testing.dart' as http_testing;
 import 'package:mocktail/mocktail.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:robotsix_chat_mobile/services/api_service.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
