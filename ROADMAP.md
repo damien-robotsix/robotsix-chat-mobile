@@ -4,14 +4,14 @@ This document tracks planned work beyond the initial skeleton.
 
 ## 1. Backend API integration
 
-- Replace the stub `ApiService` with real HTTP calls to the robotsix-chat backend.
-- Implement the chat message send/receive protocol.
-- Handle authentication token refresh.
+- ~~Replace the stub `ApiService` with real HTTP calls to the robotsix-chat backend.~~
+- ~~Implement the chat message send/receive protocol.~~
+- ~~Handle authentication token refresh.~~
 
 ## 2. SSE streaming
 
-- Connect to the chat backend's Server-Sent Events endpoint for real-time agent message streaming.
-- Render streaming responses incrementally in the chat UI (token-by-token display).
+- ~~Connect to the chat backend's Server-Sent Events endpoint for real-time agent message streaming.~~
+- ~~Render streaming responses incrementally in the chat UI (token-by-token display).~~
 - Handle SSE reconnection with exponential backoff.
 
 ## 3. Push notifications
@@ -23,7 +23,7 @@ This document tracks planned work beyond the initial skeleton.
 ## 4. Persistent storage
 
 - Store chat history locally (SQLite via `sqflite` or `drift`).
-- Persist settings (backend URL, credentials) securely (flutter_secure_storage).
+- ~~Persist settings (backend URL, credentials) securely (flutter_secure_storage).~~
 - Offline message queue.
 
 ## 5. App-store packaging
@@ -34,7 +34,7 @@ This document tracks planned work beyond the initial skeleton.
 
 ## 6. Polish
 
-- Dark mode support.
+- ~~Dark mode support.~~
 - Accessibility (semantics, screen-reader labels).
 - Internationalization (i18n).
 - Error handling and retry UX.
