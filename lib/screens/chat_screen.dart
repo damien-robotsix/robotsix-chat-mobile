@@ -167,6 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _apiService!.closeSession(session.sessionId);
       if (!mounted) return;
       await _loadSessions();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Session closed')),
       );
