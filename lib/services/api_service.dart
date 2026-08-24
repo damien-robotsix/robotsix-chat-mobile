@@ -274,7 +274,6 @@ class ApiService {
   // ------------------------------------------------------------------
 
   /// List sessions for the current owner.
-  // TODO: Session UI — not yet implemented
   Future<List<ChatSession>> listSessions() async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions?owner_id=$ownerId');
@@ -292,7 +291,6 @@ class ApiService {
   }
 
   /// Create a new session.
-  // TODO: Session UI — not yet implemented
   Future<ChatSession> createSession() async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions');
@@ -315,7 +313,6 @@ class ApiService {
   }
 
   /// Delete a session.
-  // TODO: Session UI — not yet implemented
   Future<void> deleteSession(String sessionId) async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions/$sessionId?owner_id=$ownerId');
@@ -328,7 +325,6 @@ class ApiService {
   }
 
   /// Close a session.
-  // TODO: Session UI — not yet implemented
   Future<void> closeSession(String sessionId) async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions/$sessionId/close');
@@ -348,7 +344,6 @@ class ApiService {
   }
 
   /// Fetch chat history (transcript) for a session.
-  // TODO: Session UI — not yet implemented
   Future<List<Map<String, dynamic>>> getHistory(String sessionId) async {
     final uri = Uri.parse('$baseUrl/history?session_id=$sessionId');
     final headers = await _authProvider.requestHeaders();

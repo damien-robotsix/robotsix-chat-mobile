@@ -7,6 +7,17 @@ import '../models/chat_message.dart';
 import '../services/api_service.dart';
 import '../services/update_service.dart';
 
+/// Convert a raw history entry (from `getHistory`) into a [ChatMessage].
+ChatMessage _historyEntryToMessage(Map<String, dynamic> entry, int index) {
+  final role = entry['role'] as String? ?? 'user';
+  return ChatMessage(
+    id: 'hist-$index',
+    text: (entry['content'] as String?) ?? '',
+    isUser: role == 'user',
+    timestamp: DateTime.now(),
+  );
+}
+
 /// Chat screen backed by [ApiService] with SSE streaming.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -23,6 +34,10 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   String? _sessionId;
   StreamSubscription<ChatEvent>? _activeStream;
+
+  // Session drawer state
+  List<ChatSession> _sessions = [];
+  bool _isLoadingSessions = false;
 
   @override
   void initState() {
@@ -49,6 +64,117 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } on Exception {
       // Update check is non-critical; silently ignore failures.
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Session management
+  // ------------------------------------------------------------------
+
+  /// Load sessions from the API into the drawer.
+  Future<void> _loadSessions() async {
+    if (_isLoadingSessions) return;
+    setState(() => _isLoadingSessions = true);
+    try {
+      _apiService ??= await ApiService.fromStorage();
+      final sessions = await _apiService!.listSessions();
+      if (!mounted) return;
+      setState(() {
+        _sessions = sessions;
+        _isLoadingSessions = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingSessions = false);
+    }
+  }
+
+  /// Create a new session and switch to it.
+  Future<void> _createNewSession() async {
+    try {
+      _apiService ??= await ApiService.fromStorage();
+      final session = await _apiService!.createSession();
+      if (!mounted) return;
+      setState(() {
+        _sessionId = session.sessionId;
+        _messages.clear();
+        _nextId = 0;
+      });
+      Navigator.pop(context); // Close drawer
+      await _loadSessions();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create session: $e')),
+      );
+    }
+  }
+
+  /// Switch to an existing session, loading its history.
+  Future<void> _switchToSession(ChatSession session) async {
+    Navigator.pop(context); // Close drawer
+    setState(() {
+      _sessionId = session.sessionId;
+      _messages.clear();
+      _nextId = 0;
+      _isLoading = true;
+    });
+    try {
+      _apiService ??= await ApiService.fromStorage();
+      final history = await _apiService!.getHistory(session.sessionId);
+      if (!mounted) return;
+      setState(() {
+        _messages.addAll(
+          history.asMap().entries.map(
+                (e) => _historyEntryToMessage(e.value, e.key),
+              ),
+        );
+        _nextId = history.length;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
+
+  /// Delete a session and refresh the list.
+  Future<void> _deleteSession(ChatSession session) async {
+    try {
+      _apiService ??= await ApiService.fromStorage();
+      await _apiService!.deleteSession(session.sessionId);
+      if (!mounted) return;
+      if (_sessionId == session.sessionId) {
+        setState(() {
+          _sessionId = null;
+          _messages.clear();
+          _nextId = 0;
+        });
+      }
+      await _loadSessions();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete session: $e')),
+      );
+    }
+  }
+
+  /// Close a session and refresh the list.
+  Future<void> _closeSession(ChatSession session) async {
+    try {
+      _apiService ??= await ApiService.fromStorage();
+      await _apiService!.closeSession(session.sessionId);
+      if (!mounted) return;
+      await _loadSessions();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Session closed')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to close session: $e')),
+      );
     }
   }
 
@@ -183,6 +309,16 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('robotsix-chat'),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Sessions',
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+              _loadSessions();
+            },
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -190,6 +326,97 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () => Navigator.pushNamed(context, '/settings'),
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Sessions',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _createNewSession,
+                      icon: const Icon(Icons.add),
+                      label: const Text('New Chat'),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: _isLoadingSessions
+                    ? const Center(child: CircularProgressIndicator())
+                    : _sessions.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No sessions yet.',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _sessions.length,
+                            itemBuilder: (context, index) {
+                              final session = _sessions[index];
+                              final isActive =
+                                  session.sessionId == _sessionId;
+                              return ListTile(
+                                key: ValueKey(session.sessionId),
+                                selected: isActive,
+                                leading: Icon(
+                                  isActive
+                                      ? Icons.chat_bubble
+                                      : Icons.chat_bubble_outline,
+                                ),
+                                title: Text(
+                                  session.title ??
+                                      'Session ${session.sessionId}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: session.turnCount != null
+                                    ? Text('${session.turnCount} turns')
+                                    : null,
+                                trailing: PopupMenuButton<String>(
+                                  key: ValueKey(
+                                      'menu_${session.sessionId}'),
+                                  icon: const Icon(Icons.more_vert),
+                                  onSelected: (value) {
+                                    switch (value) {
+                                      case 'close':
+                                        _closeSession(session);
+                                      case 'delete':
+                                        _deleteSession(session);
+                                    }
+                                  },
+                                  itemBuilder: (_) => [
+                                    const PopupMenuItem(
+                                      value: 'close',
+                                      child: Text('Close session'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete session'),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () => _switchToSession(session),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: Column(
         children: [
