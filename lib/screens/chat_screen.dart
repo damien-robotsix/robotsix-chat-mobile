@@ -139,7 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _isLoading = false;
         });
       }
-    } on AuthException catch (e) {
+    } on AuthException {
       if (mounted) {
         setState(() {
           _messages.clear();

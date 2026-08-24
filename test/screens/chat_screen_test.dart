@@ -34,7 +34,7 @@ void main() {
     );
 
     // Message input and send action.
-    expect(find.widgetWithText(TextField, 'Type a message…'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Type a message...'), findsOneWidget);
     expect(find.byIcon(Icons.send), findsOneWidget);
   });
 

@@ -10,6 +10,8 @@ import 'package:robotsix_chat_mobile/services/auth_provider.dart';
 class MockClient extends Mock implements http.Client {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late MockClient mockClient;
 
   setUpAll(() {
