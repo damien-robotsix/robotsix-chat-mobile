@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_provider.dart';
@@ -86,7 +85,6 @@ class ChatSession {
 /// concrete token-exchange flow can be swapped in later.
 class ApiService {
   static const _baseUrlKey = 'api_base_url';
-  static const _tokenKey = 'api_token';
   static const _ownerIdKey = 'owner_id';
 
   /// Base URL of the robotsix-chat backend (e.g. https://chat.example.com).
@@ -113,24 +111,6 @@ class ApiService {
   static Future<String?> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_baseUrlKey);
-  }
-
-  static const _secureStorage = FlutterSecureStorage();
-
-  /// Persist an API token for later use.
-  static Future<void> saveToken(String token) async {
-    await _secureStorage.write(key: _tokenKey, value: token);
-  }
-
-  /// Return the stored API token from the `api_token` key, or `null` if
-  /// none has been saved.
-  static Future<String?> getToken() async {
-    return await _secureStorage.read(key: _tokenKey);
-  }
-
-  /// Remove the stored API token from the `api_token` key (log-out).
-  static Future<void> clearToken() async {
-    await _secureStorage.delete(key: _tokenKey);
   }
 
   /// Return (or create and persist) a stable per-install client id.
@@ -161,7 +141,7 @@ class ApiService {
     if (baseUrl == null) {
       throw StateError('No base URL configured. Open Settings to configure.');
     }
-    final token = await getToken();
+    final token = await OidcTokenExchangeAuthProvider.getSubjectToken();
     return ApiService(
       baseUrl: baseUrl,
       authProvider: OidcTokenExchangeAuthProvider(
@@ -214,6 +194,11 @@ class ApiService {
     try {
       final response = await client.send(request);
 
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        final errorBody = await response.stream.bytesToString();
+        await OidcTokenExchangeAuthProvider.clearSubjectToken();
+        throw AuthException(response.statusCode, errorBody);
+      }
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
         throw ApiException(response.statusCode, errorBody);
@@ -280,6 +265,10 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await http.get(uri, headers: headers);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      throw AuthException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -304,6 +293,10 @@ class ApiService {
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
     );
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      throw AuthException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -319,6 +312,10 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await http.delete(uri, headers: headers);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      throw AuthException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -338,6 +335,10 @@ class ApiService {
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
     );
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      throw AuthException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -349,6 +350,10 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await http.get(uri, headers: headers);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      throw AuthException(response.statusCode, response.body);
+    }
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -365,6 +370,22 @@ class ApiException implements Exception {
 
   const ApiException(this.statusCode, this.body);
 
+  /// Human-readable message suitable for display in the UI.
+  String get message => body;
+
   @override
   String toString() => 'ApiException($statusCode): $body';
+}
+
+/// Thrown when the backend returns 401 or 403, indicating the current
+/// credentials have been revoked or expired.
+///
+/// The UI layer should catch this separately from generic
+/// [ApiException] and prompt the user to re-authenticate rather than
+/// showing a raw error message.
+class AuthException extends ApiException {
+  const AuthException(super.statusCode, super.body);
+
+  @override
+  String get message => 'Session expired. Please log in again from Settings.';
 }

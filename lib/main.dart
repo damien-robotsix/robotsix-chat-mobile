@@ -1,14 +1,54 @@
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/chat_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/auth_provider.dart';
 import 'services/update_service.dart';
 
 /// Entry point for the robotsix-chat mobile app.
 ///
-/// Initialises Flutter bindings and runs the [RobotsixChatApp] widget.
+/// Initialises Flutter bindings, wires up the deep-link listener for
+/// SSO callbacks, and runs the [RobotsixChatApp] widget.
 void main() {
   runApp(const RobotsixChatApp());
+  _initDeepLinks();
+}
+
+final _appLinks = AppLinks();
+
+Future<void> _initDeepLinks() async {
+  // Handle the link that launched the app (cold start).
+  try {
+    final initialUri = await _appLinks.getInitialLink();
+    if (initialUri != null) {
+      await _handleDeepLink(initialUri);
+    }
+  } catch (_) {
+    // AppLinks may throw on platforms that don't support deep links —
+    // treat as a no-op.
+  }
+
+  // Handle links that arrive while the app is already running.
+  _appLinks.uriLinkStream.listen(
+    _handleDeepLink,
+    onError: (_) {
+      // Deep-link processing failures are non-critical; the user can
+      // still log in manually.
+    },
+  );
+}
+
+Future<void> _handleDeepLink(Uri uri) async {
+  try {
+    if (uri.scheme == 'robotsixchat' &&
+        uri.host == 'auth' &&
+        uri.path.startsWith('/callback')) {
+      await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+    }
+  } catch (_) {
+    // Non-critical — the user can retry SSO login from Settings.
+  }
 }
 
 /// Show an update-available dialog prompting the user to install a new

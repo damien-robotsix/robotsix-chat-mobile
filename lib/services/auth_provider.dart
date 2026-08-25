@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api_service.dart';
 
@@ -27,13 +31,91 @@ abstract class AuthProvider {
 /// margin), so [requestHeaders] can be called before every outgoing
 /// request without performing an exchange on each call.
 ///
-/// The OIDC credential ([subjectToken]) is expected to be supplied by
-/// the app's SSO sign-in flow.  Until that flow is wired into the UI it
-/// is read from secure storage, mirroring how the previous manual token
-/// was persisted.
+/// The OIDC credential ([subjectToken]) is obtained via the fleet SSO
+/// (tinyauth) login flow — see [startSsoLogin] and [handleAuthCallback].
+/// It is persisted in platform secure storage via the static
+/// [saveSubjectToken] / [getSubjectToken] / [clearSubjectToken] helpers
+/// so the credential survives app restarts.
 class OidcTokenExchangeAuthProvider implements AuthProvider {
   static const _exchangePath = '/chat/auth/mobile-token';
   static const _clockSkew = Duration(minutes: 1);
+
+  // ------------------------------------------------------------------
+  // Static persistence (platform secure storage)
+  // ------------------------------------------------------------------
+
+  static const _subjectTokenKey = 'oidc_subject_token';
+  static const _secureStorage = FlutterSecureStorage();
+
+  /// Persist the OIDC subject token so it survives app restarts.
+  static Future<void> saveSubjectToken(String token) async {
+    await _secureStorage.write(key: _subjectTokenKey, value: token);
+    _authStateController.add(true);
+  }
+
+  /// Return the persisted OIDC subject token, or `null` if none has
+  /// been saved.
+  static Future<String?> getSubjectToken() async {
+    return await _secureStorage.read(key: _subjectTokenKey);
+  }
+
+  /// Remove the persisted OIDC subject token (log-out).
+  static Future<void> clearSubjectToken() async {
+    await _secureStorage.delete(key: _subjectTokenKey);
+    _authStateController.add(false);
+  }
+
+  // ------------------------------------------------------------------
+  // Auth-state stream — UI listens to this for reactive updates.
+  // ------------------------------------------------------------------
+
+  static final _authStateController = StreamController<bool>.broadcast();
+
+  /// Broadcast stream that emits `true` when a subject token is saved
+  /// (user logged in) and `false` when it is cleared (user logged out).
+  static Stream<bool> get authStateChanges => _authStateController.stream;
+
+  // ------------------------------------------------------------------
+  // SSO login flow (tinyauth)
+  // ------------------------------------------------------------------
+
+  /// Launch the fleet SSO (tinyauth) login page for [baseUrl] in an
+  /// in-app browser / Custom Tab.
+  ///
+  /// The SSO provider is expected to redirect back to
+  /// `robotsixchat://auth/callback?token=<subject-token>` after a
+  /// successful login.  The app captures this redirect via the
+  /// deep-link intent filter configured in AndroidManifest.xml and
+  /// forwards it to [handleAuthCallback].
+  static Future<bool> startSsoLogin(String baseUrl) async {
+    final normalized = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final loginUrl = Uri.parse(
+      '$normalized/auth/login?redirect=robotsixchat://auth/callback',
+    );
+
+    return await launchUrl(
+      loginUrl,
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  /// Process the SSO callback deep-link.
+  ///
+  /// Extracts the `token` query parameter from [uri], persists it via
+  /// [saveSubjectToken], and returns it.  Returns `null` when the URI
+  /// does not contain a valid token.
+  static Future<String?> handleAuthCallback(Uri uri) async {
+    final token = uri.queryParameters['token'];
+    if (token == null || token.isEmpty) return null;
+    await saveSubjectToken(token);
+    return token;
+  }
+
+  // ------------------------------------------------------------------
+  // Instance
+  // ------------------------------------------------------------------
 
   final String baseUrl;
   final String? subjectToken;
@@ -51,6 +133,29 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
   })  : _client = client ?? http.Client(),
         _clock = clock ?? DateTime.now;
 
+  /// Whether the provider currently holds credentials that can be used
+  /// to authenticate — either a cached access token that is still valid
+  /// or a subject token available for exchange.
+  bool get isLoggedIn {
+    if (_accessToken != null &&
+        _expiresAt != null &&
+        _clock().isBefore(_expiresAt!)) {
+      return true;
+    }
+    return subjectToken != null && subjectToken!.isNotEmpty;
+  }
+
+  /// Clear the in-memory access-token cache.
+  ///
+  /// Does **not** touch the persisted subject token.  The next call to
+  /// [requestHeaders] will re-exchange the subject token (if one is
+  /// available).
+  @visibleForTesting
+  void clearCache() {
+    _accessToken = null;
+    _expiresAt = null;
+  }
+
   @override
   Future<Map<String, String>> requestHeaders() async {
     final token = await _freshAccessToken();
@@ -58,6 +163,16 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
       return {};
     }
     return {'Authorization': 'Bearer $token'};
+  }
+
+  /// Exchange [subjectToken] for a fresh access token via the
+  /// mobile-token endpoint.
+  ///
+  /// Visible for testing so that exchange logic can be exercised
+  /// directly without going through [requestHeaders].
+  @visibleForTesting
+  Future<String?> exchangeCodeForToken() async {
+    return _freshAccessToken();
   }
 
   /// Return a still-valid cached access token, or exchange

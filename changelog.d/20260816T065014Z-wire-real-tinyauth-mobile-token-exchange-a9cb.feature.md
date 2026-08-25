@@ -1,0 +1,1 @@
+Wire real tinyauth SSO token-exchange flow: add SSO login via in-app browser with deep-link callback, remove manual API Token field from Settings (replaced with auth-status indicator and re-login action), add session management UI (drawer with create/switch/close/delete sessions), and update README to document the new SSO authentication flow.

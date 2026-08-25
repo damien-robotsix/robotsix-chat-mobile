@@ -11,12 +11,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('home screen renders the chat title, empty state, input, and settings action',
+  testWidgets(
+      'home screen renders the chat title, empty state, input, and settings action',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
     await tester.pumpAndSettle();
 
-    // There is no "Home" label; the AppBar carries the app name.
+    // AppBar carries the app name.
     expect(find.widgetWithText(AppBar, 'robotsix-chat'), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsOneWidget);
 
@@ -33,24 +34,26 @@ void main() {
     );
 
     // Message input and send action.
-    expect(find.widgetWithText(TextField, 'Type a message…'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Type a message...'), findsOneWidget);
     expect(find.byIcon(Icons.send), findsOneWidget);
   });
 
-  testWidgets('drawer opens and shows Sessions header and New Chat button',
-      (tester) async {
+  testWidgets('session bar is shown (no session state)', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
     await tester.pumpAndSettle();
 
-    // Open the drawer by tapping the menu icon.
-    await tester.tap(find.byIcon(Icons.menu));
+    expect(find.text('No session'), findsOneWidget);
+  });
+
+  testWidgets('drawer is present with sessions header', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
     await tester.pumpAndSettle();
 
-    // Drawer header and new-chat button are visible.
-    expect(find.text('Sessions'), findsOneWidget);
-    expect(find.text('New Chat'), findsOneWidget);
+    // Open the drawer
+    final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+    scaffoldState.openDrawer();
+    await tester.pumpAndSettle();
 
-    // Empty state shown when no sessions are loaded.
-    expect(find.text('No sessions yet.'), findsOneWidget);
+    expect(find.text('Sessions'), findsOneWidget);
   });
 }
