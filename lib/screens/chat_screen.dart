@@ -263,6 +263,46 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  void _handleStreamError(String agentMsgId, String errorMsg) {
+    if (!mounted) return;
+    setState(() {
+      _updateMessage(agentMsgId, errorMsg);
+      _isLoading = false;
+    });
+    _activeStream = null;
+  }
+
+  void _onStreamEvent(ChatEvent event, String agentMsgId) {
+    if (!mounted) return;
+    switch (event) {
+      case TokenEvent(:final content):
+        setState(() => _appendToMessage(agentMsgId, content));
+      case DoneEvent(:final sessionId):
+        setState(() {
+          _sessionId = sessionId;
+          _isLoading = false;
+        });
+        _activeStream = null;
+        _loadSessions();
+      case ErrorEvent(:final message, :final code):
+        _handleStreamError(agentMsgId, 'Error [$code]: $message');
+    }
+  }
+
+  StreamSubscription<ChatEvent> _subscribeToStream(
+      Stream<ChatEvent> stream, String agentMsgId) {
+    return stream.listen(
+      (event) => _onStreamEvent(event, agentMsgId),
+      onError: (error) =>
+          _handleStreamError(agentMsgId, 'Stream error: $error'),
+      onDone: () {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _activeStream = null;
+      },
+    );
+  }
+
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _isLoading) return;
@@ -297,71 +337,16 @@ class _ChatScreenState extends State<ChatScreen> {
         messageId: agentMsgId,
       );
 
-      _activeStream = stream.listen(
-        (event) {
-          if (!mounted) return;
-          switch (event) {
-            case TokenEvent(:final content):
-              setState(() {
-                _appendToMessage(agentMsgId, content);
-              });
-            case DoneEvent(:final sessionId):
-              setState(() {
-                _sessionId = sessionId;
-                _isLoading = false;
-              });
-              _activeStream = null;
-              _loadSessions();
-            case ErrorEvent(:final message, :final code):
-              setState(() {
-                _updateMessage(
-                    agentMsgId, 'Error [$code]: $message');
-                _isLoading = false;
-              });
-              _activeStream = null;
-          }
-        },
-        onError: (error) {
-          if (!mounted) return;
-          setState(() {
-            _updateMessage(agentMsgId, 'Stream error: $error');
-            _isLoading = false;
-          });
-          _activeStream = null;
-        },
-        onDone: () {
-          if (!mounted) return;
-          setState(() {
-            _isLoading = false;
-          });
-          _activeStream = null;
-        },
-      );
+      _activeStream = _subscribeToStream(stream, agentMsgId);
     } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _updateMessage(agentMsgId, e.message);
-        _isLoading = false;
-      });
+      _handleStreamError(agentMsgId, e.message);
       _showReLoginPrompt();
     } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _updateMessage(agentMsgId, 'Server error: ${e.toString()}');
-        _isLoading = false;
-      });
+      _handleStreamError(agentMsgId, 'Server error: ${e.toString()}');
     } on StateError catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _updateMessage(agentMsgId, e.message);
-        _isLoading = false;
-      });
+      _handleStreamError(agentMsgId, e.message);
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _updateMessage(agentMsgId, 'Network error: $e');
-        _isLoading = false;
-      });
+      _handleStreamError(agentMsgId, 'Network error: $e');
     }
   }
 

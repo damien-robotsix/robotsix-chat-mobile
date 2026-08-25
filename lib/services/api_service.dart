@@ -91,9 +91,14 @@ class ApiService {
   final String baseUrl;
 
   final AuthProvider _authProvider;
+  final http.Client _client;
 
-  ApiService({required this.baseUrl, required AuthProvider authProvider})
-      : _authProvider = authProvider;
+  ApiService({
+    required this.baseUrl,
+    required AuthProvider authProvider,
+    http.Client? client,
+  })  : _authProvider = authProvider,
+        _client = client ?? http.Client();
 
   // ------------------------------------------------------------------
   // Persistent config helpers
@@ -190,24 +195,19 @@ class ApiService {
     request.headers.addAll(headers);
     request.body = jsonEncode(body);
 
-    final client = http.Client();
-    try {
-      final response = await client.send(request);
+    final response = await _client.send(request);
 
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        final errorBody = await response.stream.bytesToString();
-        await OidcTokenExchangeAuthProvider.clearSubjectToken();
-        throw AuthException(response.statusCode, errorBody);
-      }
-      if (response.statusCode != 200) {
-        final errorBody = await response.stream.bytesToString();
-        throw ApiException(response.statusCode, errorBody);
-      }
-
-      yield* _parseSseStream(response.stream);
-    } finally {
-      client.close();
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      final errorBody = await response.stream.bytesToString();
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      throw AuthException(response.statusCode, errorBody);
     }
+    if (response.statusCode != 200) {
+      final errorBody = await response.stream.bytesToString();
+      throw ApiException(response.statusCode, errorBody);
+    }
+
+    yield* _parseSseStream(response.stream);
   }
 
   /// Parse an SSE byte-stream into [ChatEvent]s.
@@ -264,7 +264,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/sessions?owner_id=$ownerId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await http.get(uri, headers: headers);
+    final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401 || response.statusCode == 403) {
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
       throw AuthException(response.statusCode, response.body);
@@ -288,7 +288,7 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final response = await http.post(
+    final response = await _client.post(
       uri,
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
@@ -311,7 +311,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/sessions/$sessionId?owner_id=$ownerId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await http.delete(uri, headers: headers);
+    final response = await _client.delete(uri, headers: headers);
     if (response.statusCode == 401 || response.statusCode == 403) {
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
       throw AuthException(response.statusCode, response.body);
@@ -330,7 +330,7 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final response = await http.post(
+    final response = await _client.post(
       uri,
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
@@ -349,7 +349,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/history?session_id=$sessionId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await http.get(uri, headers: headers);
+    final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401 || response.statusCode == 403) {
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
       throw AuthException(response.statusCode, response.body);

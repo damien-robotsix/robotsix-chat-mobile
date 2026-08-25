@@ -18,21 +18,34 @@ Flutter was chosen over React Native for this project because:
 
 ```
 lib/
-  main.dart                  # App entry point, routing
+  main.dart                       # App entry point, routing
   screens/
-    chat_screen.dart         # Chat UI placeholder
-    settings_screen.dart     # Backend URL / credential config
+    chat_screen.dart              # Chat UI with SSE streaming
+    settings_screen.dart          # Backend URL / credential config
   models/
-    chat_message.dart        # Message data model
+    chat_message.dart             # Message data model
   services/
-    api_service.dart         # HTTP + SSE client with token auth
+    api_service.dart              # HTTP + SSE client with token auth
+    auth_provider.dart            # Pluggable auth (OIDC token exchange)
+    update_service.dart           # In-app update check
+docs/
+  architecture.md                 # Component diagram and data flow
+  configuration.md                # Stored config keys reference
+  auto-update.md                  # Auto-update and provisioning
 test/
-  widget_test.dart           # Smoke test
+  widget_test.dart                # Smoke test
+  models/
+  screens/
+  services/
 ```
 
 ## Documentation
 
-No documentation site exists for this repository yet. For now, see the [robotsix-standards](https://github.com/damien-robotsix/robotsix-standards) for cross-cutting conventions and this README for project-specific instructions.
+- [Architecture overview](docs/architecture.md) — component diagram and data flow
+- [Configuration reference](docs/configuration.md) — all stored settings keys and backends
+- [In-app auto-update](docs/auto-update.md) — auto-update flow and operator provisioning
+
+For cross-cutting conventions, see the [robotsix-standards](https://github.com/damien-robotsix/robotsix-standards).
 
 ## Getting started
 
@@ -95,46 +108,6 @@ Every push and PR to `main` produces a debug APK via GitHub Actions. To install 
    ```
 
 > **Note:** The CI build uses `--debug` (unsigned). Release builds require signing keys that are not stored in this repository.
-
-## In-app auto-update (Android)
-
-The app checks for updates on startup and from the Settings screen. When a newer version is available:
-
-1. A dialog appears showing the new version and offering a one-tap install.
-2. Tap **Install** — the app downloads the signed APK from the latest [GitHub Release](https://github.com/damien-robotsix/robotsix-chat-mobile/releases) and opens the Android package installer.
-3. Confirm the install — the new version replaces the existing one (data is preserved).
-
-### First-time manual install
-
-The auto-update mechanism requires an initial manual sideload — install the APK once via `adb install` or by downloading it from a web browser. After that, future updates are offered in-app.
-
-> **Important:** Android requires that every release APK be signed with the **same signing key**. If the key changes, the in-app update will fail with a signature-mismatch error. The signing key is stored as a GitHub Actions secret and is not committed to the repository.
-
-### Operator provisioning
-
-The following GitHub Actions secrets must be configured for the release workflow:
-
-| Secret | Description |
-|---|---|
-| `KEYSTORE_BASE64` | Base64-encoded JKS/PKCS12 keystore file |
-| `KEYSTORE_PASSWORD` | Password for the keystore |
-| `KEY_ALIAS` | Alias of the signing key within the keystore |
-| `KEY_PASSWORD` | Password for the signing key |
-
-To generate a keystore for the first time:
-
-```bash
-keytool -genkey -v -keystore release.keystore -alias upload \
-  -keyalg RSA -keysize 2048 -validity 10000 \
-  -storepass <password> -keypass <password> \
-  -dname "CN=robotsix-chat-mobile"
-```
-
-Then encode it and add the secrets:
-
-```bash
-base64 -w0 release.keystore  # use this as KEYSTORE_BASE64
-```
 
 ## Manual smoke test
 
