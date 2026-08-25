@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -20,6 +24,7 @@ jobs:
         with:
           flutter-version: "3.38.5"
           channel: stable
+          cache: true
 
       - run: flutter pub get
 
@@ -51,6 +56,7 @@ jobs:
         with:
           flutter-version: "3.38.5"
           channel: stable
+          cache: true
 
       - run: flutter pub get
 
@@ -67,6 +73,9 @@ jobs:
         with:
           flutter-version: "3.38.5"
           channel: stable
+          cache: true
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - run: flutter pub get
 
@@ -90,6 +99,9 @@ jobs:
         with:
           flutter-version: "3.38.5"
           channel: stable
+          cache: true
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - run: flutter pub get
 
