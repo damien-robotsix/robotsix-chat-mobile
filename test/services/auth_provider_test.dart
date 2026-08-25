@@ -613,25 +613,30 @@ void main() {
   // ---------------------------------------------------------------------------
   group('authStateChanges', () {
     test('emits true when subject token is saved', () async {
+      // Subscribe BEFORE triggering the event — broadcast streams only
+      // deliver to active subscribers.
+      final emitted =
+          OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.saveSubjectToken('test-token');
-
-      final emitted = await OidcTokenExchangeAuthProvider.authStateChanges.first;
-      expect(emitted, isTrue);
+      expect(await emitted, isTrue);
 
       // Clean up
+      final cleanup =
+          OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
-      // Consume the false event from cleanup
-      await OidcTokenExchangeAuthProvider.authStateChanges.first;
+      await cleanup;
     });
 
     test('emits false when subject token is cleared', () async {
+      final trueEvent =
+          OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.saveSubjectToken('test-token');
-      // Consume the true event
-      await OidcTokenExchangeAuthProvider.authStateChanges.first;
+      await trueEvent;
 
+      final falseEvent =
+          OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
-      final emitted = await OidcTokenExchangeAuthProvider.authStateChanges.first;
-      expect(emitted, isFalse);
+      expect(await falseEvent, isFalse);
     });
   });
 
@@ -647,9 +652,12 @@ void main() {
       final stored = await OidcTokenExchangeAuthProvider.getSubjectToken();
       expect(stored, 'my-sso-token');
 
-      // Clean up
+      // Clean up — subscribe before clearing so the broadcast event is
+      // not lost.
+      final cleanup =
+          OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
-      await OidcTokenExchangeAuthProvider.authStateChanges.first;
+      await cleanup;
     });
 
     test('returns null when token parameter is missing', () async {
