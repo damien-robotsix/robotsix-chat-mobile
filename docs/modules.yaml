@@ -40,6 +40,7 @@ modules:
       - "changelog.d/20260824T121909Z-resolve-flutter-dart-ci-version-mismatch-f2c4.bugfix.md"
       - "changelog.d/20260824T140546Z-establish-a-coherent-flutter-dart-androi-cce9.bugfix.md"
       - "changelog.d/20260824T202703Z-wire-session-crud-methods-into-ui-sessio-f636.feature.md"
+      - "changelog.d/20260827T133000Z-enable-agent-check-e201.misc.md"
       - "docs/architecture.md"
       - "docs/auto-update.md"
       - "docs/configuration.md"
