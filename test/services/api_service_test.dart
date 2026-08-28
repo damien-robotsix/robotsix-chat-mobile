@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
@@ -323,6 +324,7 @@ void main() {
       // ApiService.getOwnerId(), which reads SharedPreferences. Without a
       // mock store that throws MissingPluginException under `flutter test`.
       SharedPreferences.setMockInitialValues(<String, Object>{});
+      FlutterSecureStorage.setMockInitialValues({});
       mockClient = MockClient();
       mockAuthProvider = MockAuthProvider();
       registerFallbackValue(Uri());
@@ -333,6 +335,108 @@ void main() {
         authProvider: mockAuthProvider,
         client: mockClient,
       );
+    });
+
+    // -- listSessions --------------------------------------------------
+
+    group('listSessions', () {
+      test('returns parsed session list on 200', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async {
+          return http.Response(
+            jsonEncode([
+              {
+                'session_id': 's1',
+                'title': 'First',
+                'turn_count': 5,
+              },
+              {
+                'session_id': 's2',
+                'title': 'Second',
+                'turn_count': 0,
+              },
+            ]),
+            200,
+          );
+        });
+
+        final sessions = await apiService.listSessions();
+
+        expect(sessions, hasLength(2));
+        expect(sessions[0].sessionId, 's1');
+        expect(sessions[0].title, 'First');
+        expect(sessions[0].turnCount, 5);
+        expect(sessions[1].sessionId, 's2');
+      });
+
+      test('throws AuthException on 401', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('unauthorized', 401));
+
+        await expectLater(
+          apiService.listSessions(),
+          throwsA(isA<AuthException>()),
+        );
+      });
+
+      test('throws ApiException on non-200', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('server error', 500));
+
+        await expectLater(
+          apiService.listSessions(),
+          throwsA(isA<ApiException>()),
+        );
+      });
+    });
+
+    // -- createSession -------------------------------------------------
+
+    group('createSession', () {
+      test('returns created session on 200', () async {
+        when(() => mockClient.post(any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body')))
+            .thenAnswer((_) async {
+          return http.Response(
+            jsonEncode({
+              'session_id': 'new-session',
+              'title': null,
+              'turn_count': 0,
+            }),
+            200,
+          );
+        });
+
+        final session = await apiService.createSession();
+
+        expect(session.sessionId, 'new-session');
+        expect(session.turnCount, 0);
+      });
+
+      test('throws AuthException on 403', () async {
+        when(() => mockClient.post(any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body')))
+            .thenAnswer((_) async => http.Response('forbidden', 403));
+
+        await expectLater(
+          apiService.createSession(),
+          throwsA(isA<AuthException>()),
+        );
+      });
+
+      test('throws ApiException on non-200', () async {
+        when(() => mockClient.post(any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body')))
+            .thenAnswer((_) async => http.Response('bad request', 400));
+
+        await expectLater(
+          apiService.createSession(),
+          throwsA(isA<ApiException>()),
+        );
+      });
     });
 
     // -- deleteSession -------------------------------------------------
@@ -353,6 +457,16 @@ void main() {
         await expectLater(
           apiService.deleteSession('s1'),
           throwsA(isA<ApiException>()),
+        );
+      });
+
+      test('throws AuthException on 401', () async {
+        when(() => mockClient.delete(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('unauthorized', 401));
+
+        await expectLater(
+          apiService.deleteSession('s1'),
+          throwsA(isA<AuthException>()),
         );
       });
     });
@@ -378,6 +492,18 @@ void main() {
         await expectLater(
           apiService.closeSession('s1'),
           throwsA(isA<ApiException>()),
+        );
+      });
+
+      test('throws AuthException on 403', () async {
+        when(() => mockClient.post(any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body')))
+            .thenAnswer((_) async => http.Response('forbidden', 403));
+
+        await expectLater(
+          apiService.closeSession('s1'),
+          throwsA(isA<AuthException>()),
         );
       });
     });
@@ -411,6 +537,16 @@ void main() {
         expect(
           apiService.getHistory('s1'),
           throwsA(isA<ApiException>()),
+        );
+      });
+
+      test('throws AuthException on 401', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('unauthorized', 401));
+
+        expect(
+          apiService.getHistory('s1'),
+          throwsA(isA<AuthException>()),
         );
       });
     });
