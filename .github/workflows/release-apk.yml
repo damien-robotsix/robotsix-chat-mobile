@@ -1,0 +1,56 @@
+name: release-apk
+
+# Builds the signed release APK and attaches it to the GitHub Release that
+# release-please publishes for a v{version} tag. This replaces the old
+# hand-rolled, version-grepping `release` job that lived in ci.yml.
+#
+# release-please creates the release using a GitHub App installation token, so
+# this `release` event fires (unlike releases created with the default
+# GITHUB_TOKEN, which do not trigger further workflows).
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2  # v2
+        with:
+          flutter-version: "3.38.5"
+          channel: stable
+          cache: true
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - run: flutter pub get
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        # The semver (build name) comes from pubspec.yaml, which release-please
+        # bumps. The Android build number (versionCode) is injected here from the
+        # monotonically increasing CI run number so each release installs cleanly
+        # as an upgrade.
+        run: flutter build apk --build-number=${{ github.run_number }}
+
+      - name: Attach APK to release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631  # v2.2.2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
