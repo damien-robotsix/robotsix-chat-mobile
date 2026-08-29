@@ -2,6 +2,8 @@ package com.robotsix.chat_mobile
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -34,6 +36,29 @@ class MainActivity : FlutterActivity() {
             val file = File(filePath)
             if (!file.exists()) {
                 result.error("FILE_NOT_FOUND", "APK file not found: $filePath", null)
+                return
+            }
+
+            // On Android 8+ the app needs the "install unknown apps"
+            // permission. If it is not granted the install intent can be
+            // silently dropped by some OEMs, so send the user to the
+            // system settings screen to grant it and report a distinct
+            // error code the Dart side can act on.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                !packageManager.canRequestPackageInstalls()
+            ) {
+                val settingsIntent = Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName")
+                ).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(settingsIntent)
+                result.error(
+                    "PERMISSION_REQUIRED",
+                    "Permission to install unknown apps is required.",
+                    null
+                )
                 return
             }
 

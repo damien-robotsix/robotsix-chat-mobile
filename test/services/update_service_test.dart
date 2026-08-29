@@ -303,7 +303,17 @@ void main() {
       cacheDir = (await getApplicationCacheDirectory()).path;
     });
 
-    test('returns true on success', () async {
+    tearDown(() {
+      // Clear any install-channel handler set by an individual test so it
+      // doesn't leak into the next one.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.robotsix.chat_mobile/install'),
+        null,
+      );
+    });
+
+    test('completes without throwing on success', () async {
       var installInvoked = false;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
@@ -322,11 +332,8 @@ void main() {
         (_) async => http.Response.bytes(apkData, 200),
       );
 
-      final result = await service.downloadAndInstall(
-        'https://example.com/update.apk',
-      );
+      await service.downloadAndInstall('https://example.com/update.apk');
 
-      expect(result, isTrue);
       expect(installInvoked, isTrue);
 
       // Verify the file was written.
@@ -335,30 +342,129 @@ void main() {
       expect(apkFile.readAsBytesSync(), apkData);
     });
 
-    test('returns false on non-200 response', () async {
+    test('throws downloadFailed on non-200 response', () async {
       when(
         () => mockClient.get(any()),
       ).thenAnswer(
         (_) async => http.Response('Forbidden', 403),
       );
 
-      final result = await service.downloadAndInstall(
-        'https://example.com/update.apk',
+      await expectLater(
+        service.downloadAndInstall('https://example.com/update.apk'),
+        throwsA(
+          isA<InstallException>().having(
+            (e) => e.kind,
+            'kind',
+            InstallErrorKind.downloadFailed,
+          ),
+        ),
       );
-
-      expect(result, isFalse);
     });
 
-    test('returns false on SocketException', () async {
+    test('throws downloadFailed on SocketException', () async {
       when(
         () => mockClient.get(any()),
       ).thenThrow(const SocketException('No connection'));
 
-      final result = await service.downloadAndInstall(
-        'https://example.com/update.apk',
+      await expectLater(
+        service.downloadAndInstall('https://example.com/update.apk'),
+        throwsA(
+          isA<InstallException>().having(
+            (e) => e.kind,
+            'kind',
+            InstallErrorKind.downloadFailed,
+          ),
+        ),
+      );
+    });
+
+    test('throws permissionRequired when native reports PERMISSION_REQUIRED',
+        () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.robotsix.chat_mobile/install'),
+        (call) async {
+          throw PlatformException(
+            code: 'PERMISSION_REQUIRED',
+            message: 'Permission to install unknown apps is required.',
+          );
+        },
       );
 
-      expect(result, isFalse);
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer(
+        (_) async => http.Response.bytes(apkData, 200),
+      );
+
+      await expectLater(
+        service.downloadAndInstall('https://example.com/update.apk'),
+        throwsA(
+          isA<InstallException>().having(
+            (e) => e.kind,
+            'kind',
+            InstallErrorKind.permissionRequired,
+          ),
+        ),
+      );
+    });
+
+    test('throws platformError on other PlatformException', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.robotsix.chat_mobile/install'),
+        (call) async {
+          throw PlatformException(
+            code: 'INSTALL_ERROR',
+            message: 'Failed to launch install',
+          );
+        },
+      );
+
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer(
+        (_) async => http.Response.bytes(apkData, 200),
+      );
+
+      await expectLater(
+        service.downloadAndInstall('https://example.com/update.apk'),
+        throwsA(
+          isA<InstallException>().having(
+            (e) => e.kind,
+            'kind',
+            InstallErrorKind.platformError,
+          ),
+        ),
+      );
+    });
+
+    test('throws pluginMissing when native handler is absent', () async {
+      // No handler registered for the install channel → invokeMethod
+      // raises a MissingPluginException (simulates an old installed build
+      // that predates the native installApk handler).
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.robotsix.chat_mobile/install'),
+        null,
+      );
+
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer(
+        (_) async => http.Response.bytes(apkData, 200),
+      );
+
+      await expectLater(
+        service.downloadAndInstall('https://example.com/update.apk'),
+        throwsA(
+          isA<InstallException>().having(
+            (e) => e.kind,
+            'kind',
+            InstallErrorKind.pluginMissing,
+          ),
+        ),
+      );
     });
   });
 }
