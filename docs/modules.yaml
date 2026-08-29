@@ -42,6 +42,7 @@ modules:
       - "changelog.d/20260824T202703Z-wire-session-crud-methods-into-ui-sessio-f636.feature.md"
       - "changelog.d/20260827T133000Z-enable-agent-check-e201.misc.md"
       - "changelog.d/20260829T080848Z-enable-test-gap-periodic-workflow-on-rob-5665.misc.md"
+      - "changelog.d/20260829T205814Z-bump-app-version-to-0-2-0-and-publish-a-1578.misc.md"
       - "docs/architecture.md"
       - "docs/auto-update.md"
       - "docs/configuration.md"
