@@ -44,6 +44,7 @@ test/
 - [Architecture overview](docs/architecture.md) — component diagram and data flow
 - [Configuration reference](docs/configuration.md) — all stored settings keys and backends
 - [In-app auto-update](docs/auto-update.md) — auto-update flow and operator provisioning
+- [Release process](docs/release-process.md) — automated release-please flow and APK publishing
 
 For cross-cutting conventions, see the [robotsix-standards](https://github.com/damien-robotsix/robotsix-standards).
 
