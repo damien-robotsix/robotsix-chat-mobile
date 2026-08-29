@@ -57,6 +57,42 @@ class UpdateCheckResult {
       );
 }
 
+/// The kind of failure that occurred while downloading or installing an
+/// update, used to give the user actionable feedback.
+enum InstallErrorKind {
+  /// The APK could not be downloaded (network error or non-200 response).
+  downloadFailed,
+
+  /// The user has not granted the "install unknown apps" permission and
+  /// must do so before the install can proceed.
+  permissionRequired,
+
+  /// The installed build predates the native install handler
+  /// (a [MissingPluginException] was raised).
+  pluginMissing,
+
+  /// The native side reported a platform error while launching the
+  /// installer.
+  platformError,
+}
+
+/// Raised by [UpdateService.downloadAndInstall] when the download or the
+/// native install step fails.  Carries a [kind] so callers can tailor the
+/// message shown to the user, plus a human-readable [message].
+class InstallException implements Exception {
+  /// The category of failure.
+  final InstallErrorKind kind;
+
+  /// A user-facing description of what went wrong.
+  final String message;
+
+  /// Creates an [InstallException].
+  const InstallException(this.kind, this.message);
+
+  @override
+  String toString() => 'InstallException($kind): $message';
+}
+
 /// Service that checks GitHub Releases for newer app versions and
 /// downloads + installs APKs.
 class UpdateService {
@@ -140,25 +176,69 @@ class UpdateService {
 
   /// Download the APK from [url] and launch the system installer.
   ///
-  /// Returns `true` if the install intent was launched successfully.
-  Future<bool> downloadAndInstall(String url) async {
+  /// Completes normally once the system installer has been launched.
+  /// Throws an [InstallException] (with a specific [InstallErrorKind])
+  /// when the download fails, the install permission is missing, the
+  /// native install handler is unavailable, or the platform reports an
+  /// error — so callers can surface an actionable message to the user.
+  /// Failures are never swallowed silently.
+  Future<void> downloadAndInstall(String url) async {
+    final dir = await getApplicationCacheDirectory();
+    final file = File('${dir.path}/update.apk');
+
+    final http.Response response;
     try {
-      final dir = await getApplicationCacheDirectory();
-      final file = File('${dir.path}/update.apk');
+      response = await _client.get(Uri.parse(url));
+    } on SocketException catch (e) {
+      throw InstallException(
+        InstallErrorKind.downloadFailed,
+        'Download failed: network unavailable (${e.message}).',
+      );
+    } on http.ClientException catch (e) {
+      throw InstallException(
+        InstallErrorKind.downloadFailed,
+        'Download failed: ${e.message}',
+      );
+    }
 
-      final response = await _client.get(Uri.parse(url));
-      if (response.statusCode != 200) {
-        return false;
-      }
+    if (response.statusCode != 200) {
+      throw InstallException(
+        InstallErrorKind.downloadFailed,
+        'Download failed: server returned ${response.statusCode}.',
+      );
+    }
 
-      await file.writeAsBytes(response.bodyBytes);
+    await file.writeAsBytes(response.bodyBytes);
 
-      final result = await _channel.invokeMethod<bool>('installApk', {
+    try {
+      final ok = await _channel.invokeMethod<bool>('installApk', {
         'path': file.path,
       });
-      return result ?? false;
-    } on Exception {
-      return false;
+      if (ok != true) {
+        throw const InstallException(
+          InstallErrorKind.platformError,
+          'The system installer could not be launched.',
+        );
+      }
+    } on MissingPluginException {
+      throw const InstallException(
+        InstallErrorKind.pluginMissing,
+        'This installed build does not support in-app updates. '
+        'Please download and install the new version manually.',
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'PERMISSION_REQUIRED') {
+        throw const InstallException(
+          InstallErrorKind.permissionRequired,
+          'Permission required: allow installing unknown apps for this '
+          'app in the settings screen that just opened, then tap Install '
+          'again.',
+        );
+      }
+      throw InstallException(
+        InstallErrorKind.platformError,
+        'Install failed: ${e.message ?? e.code}',
+      );
     }
   }
 

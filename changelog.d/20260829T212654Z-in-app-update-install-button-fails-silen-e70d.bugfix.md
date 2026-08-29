@@ -1,0 +1,1 @@
+Fix the in-app update "Install" button silently doing nothing: the download-and-install flow is now awaited with a progress indicator, failures surface a clear error dialog (including a permission-required path that opens the "install unknown apps" settings), and the native installer checks the install permission before firing the intent.

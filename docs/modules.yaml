@@ -43,6 +43,7 @@ modules:
       - "changelog.d/20260827T133000Z-enable-agent-check-e201.misc.md"
       - "changelog.d/20260829T080848Z-enable-test-gap-periodic-workflow-on-rob-5665.misc.md"
       - "changelog.d/20260829T205814Z-bump-app-version-to-0-2-0-and-publish-a-1578.misc.md"
+      - "changelog.d/20260829T212654Z-in-app-update-install-button-fails-silen-e70d.bugfix.md"
       - "docs/architecture.md"
       - "docs/auto-update.md"
       - "docs/configuration.md"

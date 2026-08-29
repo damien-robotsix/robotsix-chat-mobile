@@ -76,11 +76,11 @@ Future<void> showUpdateDialog(BuildContext context, UpdateCheckResult result) {
           child: const Text('Later'),
         ),
         FilledButton(
-          onPressed: () {
+          onPressed: () async {
             Navigator.pop(ctx);
             final url = result.apkDownloadUrl;
             if (url != null) {
-              UpdateService().downloadAndInstall(url);
+              await _downloadAndInstallUpdate(context, url);
             }
           },
           child: const Text('Install'),
@@ -88,6 +88,60 @@ Future<void> showUpdateDialog(BuildContext context, UpdateCheckResult result) {
       ],
     ),
   );
+}
+
+/// Download and install the APK at [url], showing a modal progress
+/// indicator during the download and an error dialog if the flow fails.
+///
+/// On success the system installer takes over. On failure the user is
+/// always shown a clear reason (including the permission-required case,
+/// with a path to grant it and retry).
+Future<void> _downloadAndInstallUpdate(BuildContext context, String url) async {
+  // Show a modal, non-dismissible progress indicator while the
+  // (potentially multi-MB) APK downloads.
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const AlertDialog(
+      content: Row(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 24),
+          Expanded(child: Text('Downloading update…')),
+        ],
+      ),
+    ),
+  );
+
+  String? errorMessage;
+  try {
+    await UpdateService().downloadAndInstall(url);
+  } on InstallException catch (e) {
+    errorMessage = e.message;
+  } catch (e) {
+    errorMessage = 'Install failed: $e';
+  }
+
+  // Dismiss the progress dialog.
+  if (context.mounted) {
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  if (errorMessage != null && context.mounted) {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Install Failed'),
+        content: Text(errorMessage!),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Root [MaterialApp] widget for the robotsix-chat application.
