@@ -92,7 +92,7 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
     final loginUrl = Uri.parse(
-      '$normalized/auth/login?redirect=robotsixchat://auth/callback',
+      '$normalized/auth/login?redirect_to=robotsixchat://auth/callback',
     );
 
     return await launchUrl(
