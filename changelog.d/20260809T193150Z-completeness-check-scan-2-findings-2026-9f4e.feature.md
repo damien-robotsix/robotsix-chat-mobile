@@ -1,1 +1,0 @@
-Wire ApiService into ChatScreen (replacing stub responses with real API calls) and SettingsScreen (persisting base URL and token across restarts). Added loading indicator, error handling, and Clear Token button.

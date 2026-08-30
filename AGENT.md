@@ -21,7 +21,8 @@ This repository follows the [robotsix-standards](https://github.com/damien-robot
 
 ### Changelog
 
-- Changelog fragments live in `changelog.d/` (towncrier-style). Each ticket gets its own fragment file.
+- Release notes come from **release-please + conventional commits** only. There is no changelog fragment layer.
+- Commit subjects and PR titles must be conventional (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`/`ci:`); release-please generates `CHANGELOG.md`.
 
 ### Module registration
 

@@ -1,1 +1,0 @@
-Make `UpdateService` testable by injecting `http.Client` via constructor parameter with a default. Added `mocktail` as a dev dependency and created 24 unit tests covering version comparison, API response parsing, error paths, and `downloadAndInstall`.
