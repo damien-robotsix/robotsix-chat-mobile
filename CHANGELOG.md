@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.0...robotsix_chat_mobile-v0.3.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **build:** require Flutter &gt;=3.47.0, matching app_links' Dart 3.12 floor ([#57](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/57)) ([c55c3c6](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/c55c3c6d3423a0f915b02732222f7df0c59fcabf))
+
 ## [0.3.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.2.0...robotsix_chat_mobile-v0.3.0) (2026-08-30)
 
 
