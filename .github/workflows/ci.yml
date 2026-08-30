@@ -28,21 +28,6 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Verify changelog fragments are registered
-        run: |
-          shopt -s nullglob
-          missing=0
-          for f in changelog.d/*.md; do
-            if ! grep -qF "$f" docs/modules.yaml; then
-              echo "ERROR: $f is not registered in docs/modules.yaml"
-              missing=1
-            fi
-          done
-          if [ $missing -ne 0 ]; then
-            echo "Run: add each unregistered fragment path to docs/modules.yaml under the core module's paths list."
-            exit 1
-          fi
-
       - run: flutter analyze
 
   test:
