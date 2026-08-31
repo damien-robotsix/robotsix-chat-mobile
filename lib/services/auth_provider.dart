@@ -113,6 +113,28 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
     return token;
   }
 
+  /// Extract the authenticated subject (`sub` claim) from a signed
+  /// OIDC/JWT [jwt] without verifying its signature.
+  ///
+  /// The subject uniquely identifies the SSO user and is used to key
+  /// the owner's conversations so mobile and web share the same set.
+  /// Returns `null` when [jwt] is absent or is not a JWT carrying a
+  /// non-empty `sub` claim (e.g. an opaque token).
+  static String? subjectFromToken(String? jwt) {
+    if (jwt == null || jwt.isEmpty) return null;
+    final parts = jwt.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final decoded =
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final claims = jsonDecode(decoded) as Map<String, dynamic>;
+      final sub = claims['sub'];
+      return sub is String && sub.isNotEmpty ? sub : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ------------------------------------------------------------------
   // Instance
   // ------------------------------------------------------------------
