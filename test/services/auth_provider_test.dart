@@ -674,4 +674,39 @@ void main() {
       expect(result, isNull);
     });
   });
+
+  group('OidcTokenExchangeAuthProvider.subjectFromToken', () {
+    test('extracts the sub claim from a signed JWT', () {
+      // Payload: {"sub":"sso-user-42"}
+      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+          'eyJzdWIiOiJzc28tdXNlci00MiJ9.'
+          'c2lnbmF0dXJl';
+
+      expect(
+        OidcTokenExchangeAuthProvider.subjectFromToken(jwt),
+        'sso-user-42',
+      );
+    });
+
+    test('returns null for a null or empty token', () {
+      expect(OidcTokenExchangeAuthProvider.subjectFromToken(null), isNull);
+      expect(OidcTokenExchangeAuthProvider.subjectFromToken(''), isNull);
+    });
+
+    test('returns null for an opaque (non-JWT) token', () {
+      expect(
+        OidcTokenExchangeAuthProvider.subjectFromToken('opaque-token'),
+        isNull,
+      );
+    });
+
+    test('returns null when the sub claim is absent', () {
+      // Payload: {"name":"nobody"}
+      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+          'eyJuYW1lIjoibm9ib2R5In0.'
+          'c2lnbmF0dXJl';
+
+      expect(OidcTokenExchangeAuthProvider.subjectFromToken(jwt), isNull);
+    });
+  });
 }

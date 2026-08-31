@@ -39,6 +39,51 @@ void main() {
     });
   });
 
+  group('ApiService.getOwnerId', () {
+    // A JWT whose payload is {"sub":"sso-user-42"} (signature ignored).
+    const jwtForSsoUser42 =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+        'eyJzdWIiOiJzc28tdXNlci00MiJ9.'
+        'c2lnbmF0dXJl';
+
+    setUp(() {
+      FlutterSecureStorage.setMockInitialValues({});
+    });
+
+    test('derives owner_id from the authenticated SSO subject', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await OidcTokenExchangeAuthProvider.saveSubjectToken(jwtForSsoUser42);
+
+      final ownerId = await ApiService.getOwnerId();
+
+      expect(ownerId, 'sso-user-42');
+    });
+
+    test('replaces a previously-generated random id with the subject',
+        () async {
+      SharedPreferences.setMockInitialValues(
+          <String, Object>{'owner_id': 'random-device-id'});
+      await OidcTokenExchangeAuthProvider.saveSubjectToken(jwtForSsoUser42);
+
+      final ownerId = await ApiService.getOwnerId();
+
+      expect(ownerId, 'sso-user-42');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('owner_id'), 'sso-user-42');
+    });
+
+    test('falls back to a stable per-install id when not logged in',
+        () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+
+      final first = await ApiService.getOwnerId();
+      final second = await ApiService.getOwnerId();
+
+      expect(first, isNotEmpty);
+      expect(second, first);
+    });
+  });
+
   group('ApiException', () {
     test('stores statusCode and body', () {
       const ex = ApiException(404, 'Not Found');
@@ -511,14 +556,17 @@ void main() {
     // -- getHistory ----------------------------------------------------
 
     group('getHistory', () {
-      test('returns parsed history list on 200', () async {
+      test('parses the turns field of the {"turns": [...]} response',
+          () async {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async {
           return http.Response(
-            jsonEncode([
-              {'role': 'user', 'content': 'hello'},
-              {'role': 'assistant', 'content': 'hi there'},
-            ]),
+            jsonEncode({
+              'turns': [
+                {'role': 'user', 'content': 'hello'},
+                {'role': 'assistant', 'content': 'hi there'},
+              ],
+            }),
             200,
           );
         });
@@ -528,6 +576,15 @@ void main() {
         expect(history, hasLength(2));
         expect(history[0]['role'], 'user');
         expect(history[1]['content'], 'hi there');
+      });
+
+      test('returns an empty list when turns is absent', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response(jsonEncode({}), 200));
+
+        final history = await apiService.getHistory('s1');
+
+        expect(history, isEmpty);
       });
 
       test('throws ApiException on non-200', () async {

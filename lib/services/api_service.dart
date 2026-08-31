@@ -118,12 +118,34 @@ class ApiService {
     return prefs.getString(_baseUrlKey);
   }
 
-  /// Return (or create and persist) a stable per-install client id.
+  /// Return the `owner_id` used to associate conversations with the
+  /// current user.
   ///
-  /// This id is sent as `owner_id` with every chat request so the
-  /// backend can associate sessions with this device.
+  /// When the user is authenticated via SSO, the id is derived from the
+  /// authenticated subject (the `sub` claim of the signed OIDC token)
+  /// so that conversations are attributable to the user across devices
+  /// and match the set the web backend associates with the same
+  /// subject.  The derived subject is persisted under `owner_id`,
+  /// migrating/replacing any previously-generated random per-install id.
+  ///
+  /// When no SSO identity is available (e.g. before login), a stable
+  /// per-install id is generated and reused as a fallback.
   static Future<String> getOwnerId() async {
     final prefs = await SharedPreferences.getInstance();
+
+    final subjectToken =
+        await OidcTokenExchangeAuthProvider.getSubjectToken();
+    final subject =
+        OidcTokenExchangeAuthProvider.subjectFromToken(subjectToken);
+    if (subject != null) {
+      // Migrate/replace any locally-generated random id with the
+      // authenticated SSO subject.
+      if (prefs.getString(_ownerIdKey) != subject) {
+        await prefs.setString(_ownerIdKey, subject);
+      }
+      return subject;
+    }
+
     final existing = prefs.getString(_ownerIdKey);
     if (existing != null) return existing;
     final id = _generateId(16);
@@ -259,7 +281,6 @@ class ApiService {
   // ------------------------------------------------------------------
 
   /// List sessions for the current owner.
-  // TODO(session-crud): Method implemented but not yet wired into any UI.
   Future<List<ChatSession>> listSessions() async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions?owner_id=$ownerId');
@@ -281,7 +302,6 @@ class ApiService {
   }
 
   /// Create a new session.
-  // TODO(session-crud): Method implemented but not yet wired into any UI.
   Future<ChatSession> createSession() async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions');
@@ -308,7 +328,6 @@ class ApiService {
   }
 
   /// Delete a session.
-  // TODO(session-crud): Method implemented but not yet wired into any UI.
   Future<void> deleteSession(String sessionId) async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions/$sessionId?owner_id=$ownerId');
@@ -325,7 +344,6 @@ class ApiService {
   }
 
   /// Close a session.
-  // TODO(session-crud): Method implemented but not yet wired into any UI.
   Future<void> closeSession(String sessionId) async {
     final ownerId = await getOwnerId();
     final uri = Uri.parse('$baseUrl/sessions/$sessionId/close');
@@ -349,7 +367,9 @@ class ApiService {
   }
 
   /// Fetch chat history (transcript) for a session.
-  // TODO(session-crud): Method implemented but not yet wired into any UI.
+  ///
+  /// The backend returns an object of the form `{"turns": [...]}`; the
+  /// transcript turns are read from the `turns` field.
   Future<List<Map<String, dynamic>>> getHistory(String sessionId) async {
     final uri = Uri.parse('$baseUrl/history?session_id=$sessionId');
     final headers = await _authProvider.requestHeaders();
@@ -363,8 +383,9 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
 
-    final list = jsonDecode(response.body) as List<dynamic>;
-    return list.cast<Map<String, dynamic>>();
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
+    return turns.cast<Map<String, dynamic>>();
   }
 }
 
