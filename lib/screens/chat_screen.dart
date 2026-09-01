@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/chat_message.dart';
 import '../services/api_service.dart';
+import '../services/auth_provider.dart';
 import '../services/update_service.dart';
 
 /// Chat screen backed by [ApiService] with SSE streaming and
@@ -30,10 +31,21 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _sessionsLoading = false;
   String? _sessionsError;
 
+  StreamSubscription<bool>? _authSub;
+
   @override
   void initState() {
     super.initState();
     _initApiService();
+    // Re-initialise the API client whenever auth state becomes true (e.g.
+    // after SSO login), so the chat screen stops using a stale token-less
+    // client built before login.
+    _authSub =
+        OidcTokenExchangeAuthProvider.authStateChanges.listen((isLoggedIn) {
+      if (isLoggedIn && mounted) {
+        _initApiService();
+      }
+    });
     _checkForUpdate();
   }
 
@@ -235,13 +247,20 @@ class _ChatScreenState extends State<ChatScreen> {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pushNamed(context, '/settings');
+              _openSettings();
             },
             child: const Text('Settings'),
           ),
         ],
       ),
     );
+  }
+
+  /// Open Settings and refresh auth state afterwards, so a login that
+  /// completed while Settings was open is picked up immediately.
+  Future<void> _openSettings() async {
+    await Navigator.pushNamed(context, '/settings');
+    if (mounted) _initApiService();
   }
 
   Future<void> _checkForUpdate() async {
@@ -258,6 +277,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _activeStream?.cancel();
     _controller.dispose();
     super.dispose();
@@ -394,7 +414,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
+            onPressed: _openSettings,
           ),
         ],
       ),

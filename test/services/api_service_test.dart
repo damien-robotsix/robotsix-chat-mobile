@@ -424,6 +424,69 @@ void main() {
         );
       });
 
+      test('does not wipe a saved subject token on a stale-client 401',
+          () async {
+        // A stale client built (token-less) before login must not wipe a
+        // credential saved by a newer auth flow when it receives a 401.
+        await OidcTokenExchangeAuthProvider.saveSubjectToken('tok-123');
+        final staleService = ApiService(
+          baseUrl: 'https://chat.example.com',
+          authProvider: OidcTokenExchangeAuthProvider(
+            baseUrl: 'https://chat.example.com',
+          ),
+          client: mockClient,
+        );
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('unauthorized', 401));
+
+        await expectLater(
+          staleService.listSessions(),
+          throwsA(isA<AuthException>()),
+        );
+        expect(
+          await OidcTokenExchangeAuthProvider.getSubjectToken(),
+          'tok-123',
+        );
+      });
+
+      test('clears the subject token on a genuine 401 when the client has '
+          'one', () async {
+        final exchangeClient = MockClient();
+        when(
+          () => exchangeClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({'access_token': 'fresh-token', 'expires_in': 3600}),
+            200,
+          ),
+        );
+        await OidcTokenExchangeAuthProvider.saveSubjectToken('tok-123');
+        final authedService = ApiService(
+          baseUrl: 'https://chat.example.com',
+          authProvider: OidcTokenExchangeAuthProvider(
+            baseUrl: 'https://chat.example.com',
+            subjectToken: 'tok-123',
+            client: exchangeClient,
+          ),
+          client: mockClient,
+        );
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async => http.Response('unauthorized', 401));
+
+        await expectLater(
+          authedService.listSessions(),
+          throwsA(isA<AuthException>()),
+        );
+        expect(
+          await OidcTokenExchangeAuthProvider.getSubjectToken(),
+          isNull,
+        );
+      });
+
       test('throws ApiException on non-200', () async {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async => http.Response('server error', 500));
