@@ -178,6 +178,19 @@ class ApiService {
     );
   }
 
+  /// Clear the persisted subject token after a 401/403 — but only when
+  /// this client actually holds credentials.
+  ///
+  /// A stale client that was initialised before login has no token to
+  /// exchange, so a 401 from it must not wipe a credential that a newer
+  /// auth flow saved to storage.
+  Future<void> _clearSubjectTokenIfAuthenticated() async {
+    final provider = _authProvider;
+    if (provider is OidcTokenExchangeAuthProvider && provider.isLoggedIn) {
+      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+    }
+  }
+
   // ------------------------------------------------------------------
   // Chat — POST /chat returns an SSE stream
   // ------------------------------------------------------------------
@@ -221,7 +234,7 @@ class ApiService {
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       final errorBody = await response.stream.bytesToString();
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await _clearSubjectTokenIfAuthenticated();
       throw AuthException(response.statusCode, errorBody);
     }
     if (response.statusCode != 200) {
@@ -288,7 +301,7 @@ class ApiService {
 
     final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401 || response.statusCode == 403) {
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await _clearSubjectTokenIfAuthenticated();
       throw AuthException(response.statusCode, response.body);
     }
     if (response.statusCode != 200) {
@@ -316,7 +329,7 @@ class ApiService {
       body: jsonEncode({'owner_id': ownerId}),
     );
     if (response.statusCode == 401 || response.statusCode == 403) {
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await _clearSubjectTokenIfAuthenticated();
       throw AuthException(response.statusCode, response.body);
     }
     if (response.statusCode != 200) {
@@ -335,7 +348,7 @@ class ApiService {
 
     final response = await _client.delete(uri, headers: headers);
     if (response.statusCode == 401 || response.statusCode == 403) {
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await _clearSubjectTokenIfAuthenticated();
       throw AuthException(response.statusCode, response.body);
     }
     if (response.statusCode != 200) {
@@ -358,7 +371,7 @@ class ApiService {
       body: jsonEncode({'owner_id': ownerId}),
     );
     if (response.statusCode == 401 || response.statusCode == 403) {
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await _clearSubjectTokenIfAuthenticated();
       throw AuthException(response.statusCode, response.body);
     }
     if (response.statusCode != 200) {
@@ -376,7 +389,7 @@ class ApiService {
 
     final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401 || response.statusCode == 403) {
-      await OidcTokenExchangeAuthProvider.clearSubjectToken();
+      await _clearSubjectTokenIfAuthenticated();
       throw AuthException(response.statusCode, response.body);
     }
     if (response.statusCode != 200) {
