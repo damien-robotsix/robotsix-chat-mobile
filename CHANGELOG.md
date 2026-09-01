@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.1...robotsix_chat_mobile-v0.3.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* Mobile app forgets SSO auth state after leaving Settings (20260901T104408Z-mobile-app-forgets-sso-auth-state-after-9029) ([#60](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/60)) ([726220e](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/726220e49a3ff515ffd1174d85ce436bb27f8f99))
+
 ## [0.3.1](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.0...robotsix_chat_mobile-v0.3.1) (2026-08-30)
 
 
