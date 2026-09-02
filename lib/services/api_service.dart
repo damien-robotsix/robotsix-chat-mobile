@@ -308,7 +308,8 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
 
-    final list = jsonDecode(response.body) as List<dynamic>;
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = decoded['sessions'] as List<dynamic>? ?? const <dynamic>[];
     return list
         .map((e) => ChatSession.fromJson(e as Map<String, dynamic>))
         .toList();

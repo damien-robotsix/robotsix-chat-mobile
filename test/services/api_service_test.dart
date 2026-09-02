@@ -389,18 +389,21 @@ void main() {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async {
           return http.Response(
-            jsonEncode([
-              {
-                'session_id': 's1',
-                'title': 'First',
-                'turn_count': 5,
-              },
-              {
-                'session_id': 's2',
-                'title': 'Second',
-                'turn_count': 0,
-              },
-            ]),
+            jsonEncode({
+              'sessions': [
+                {
+                  'session_id': 's1',
+                  'title': 'First',
+                  'turn_count': 5,
+                },
+                {
+                  'session_id': 's2',
+                  'title': 'Second',
+                  'turn_count': 0,
+                },
+              ],
+              'active_session_id': 's1',
+            }),
             200,
           );
         });
@@ -412,6 +415,20 @@ void main() {
         expect(sessions[0].title, 'First');
         expect(sessions[0].turnCount, 5);
         expect(sessions[1].sessionId, 's2');
+      });
+
+      test('returns empty list when sessions key is missing', () async {
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async {
+          return http.Response(
+            jsonEncode({'active_session_id': null}),
+            200,
+          );
+        });
+
+        final sessions = await apiService.listSessions();
+
+        expect(sessions, isEmpty);
       });
 
       test('throws AuthException on 401', () async {
