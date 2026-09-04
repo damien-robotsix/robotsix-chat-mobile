@@ -308,6 +308,9 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
 
+    // GET /sessions returns a Map ({"sessions": [...], "active_session_id": ...}),
+    // not a bare List. Cast to Map and read the "sessions" key; casting the
+    // response directly to List crashes the sessions page (see PR #62).
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final list = decoded['sessions'] as List<dynamic>? ?? const <dynamic>[];
     return list
