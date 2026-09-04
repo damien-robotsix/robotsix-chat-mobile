@@ -40,6 +40,31 @@ no manual version editing and no hand-rolled version-grepping release job.
   releases — so a newer APK always installs cleanly as an upgrade — without
   requiring release-please to manage build metadata in `pubspec.yaml`.
 
+## Forcing a release
+
+release-please only cuts a release when a **version-bumping** conventional commit
+has landed on `main` since the last tag. `feat:`, `fix:`, and any
+`!`/`BREAKING CHANGE` commit bump the version; `chore:`, `docs:`, `ci:`,
+`refactor:`, `test:`, and `style:` commits do **not** — they accumulate silently
+and never open a release PR on their own.
+
+This is a real trap: a genuine fix can reach `main` under a non-bumping prefix
+(e.g. squash-merged as `chore:`), leaving the code fixed but unreleased. The
+workflow run goes green, yet no `v{version}` tag, GitHub Release, or signed APK
+is ever produced.
+
+When a fix has landed but no release was cut, force one with either:
+
+- **A `Release-As:` footer.** Land a commit on `main` whose message body
+  contains `Release-As: X.Y.Z` (for example on an otherwise trivial change).
+  release-please honours the directive and opens a release PR for that exact
+  version regardless of the commit's type prefix.
+- **A real `fix:`/`feat:` commit.** Re-land the change (or a follow-up) under a
+  bumping prefix so the patch/minor bump is computed normally.
+
+Either way, merging the resulting release PR tags the version and publishes the
+Release, which triggers `release-apk.yml` to build and attach the signed APK.
+
 ## Updater contract
 
 The in-app updater (`UpdateService.checkForUpdate()`, see
