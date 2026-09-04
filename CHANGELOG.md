@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.2...robotsix_chat_mobile-v0.3.3) (2026-09-04)
+
+
+### Bug Fixes
+
+* cut v0.3.3 release carrying the listSessions session-parsing fix ([#64](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/64)) ([0193023](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/0193023f7237646c6acd2200b1b9fda84e87346d))
+
 ## [0.3.2](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.1...robotsix_chat_mobile-v0.3.2) (2026-09-01)
 
 
