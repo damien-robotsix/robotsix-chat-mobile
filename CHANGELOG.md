@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.3...robotsix_chat_mobile-v0.3.4) (2026-09-05)
+
+
+### Bug Fixes
+
+* parse release-please package-prefixed tags in update checker ([#66](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/66)) ([853ac0c](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/853ac0c43d25860f3b6d4b44fd2d26ff39e68373))
+
 ## [0.3.3](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.2...robotsix_chat_mobile-v0.3.3) (2026-09-04)
 
 
