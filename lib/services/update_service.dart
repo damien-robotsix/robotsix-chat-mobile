@@ -139,7 +139,7 @@ class UpdateService {
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final tag = body['tag_name'] as String? ?? '';
-      final latestVersion = tag.startsWith('v') ? tag.substring(1) : tag;
+      final latestVersion = extractSemver(tag);
 
       // Find the APK asset.
       final assets = body['assets'] as List<dynamic>? ?? [];
@@ -247,6 +247,19 @@ class UpdateService {
   String stripBuildNumber(String version) {
     final idx = version.indexOf('+');
     return idx >= 0 ? version.substring(0, idx) : version;
+  }
+
+  /// Extract the X.Y.Z semver portion from a release tag, independent of
+  /// any prefix.
+  ///
+  /// release-please prefixes tags with the package name
+  /// (e.g. "robotsix_chat_mobile-v0.3.3"); GitHub Releases may also use a
+  /// plain "v0.3.3" or bare "0.3.3".  Returns the matched "X.Y.Z" string,
+  /// or an empty string when the tag contains no semver (in which case
+  /// [isNewer] safely returns false and the app reports up-to-date).
+  String extractSemver(String tag) {
+    final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(tag);
+    return match?.group(1) ?? '';
   }
 
   /// Return true if [a] is a newer semver than [b].
