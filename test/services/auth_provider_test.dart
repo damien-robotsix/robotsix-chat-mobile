@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 
-import 'package:robotsix_chat_mobile/services/api_service.dart';
+import 'package:robotsix_chat_mobile/models/api_exception.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
 
 class MockClient extends Mock implements http.Client {}
