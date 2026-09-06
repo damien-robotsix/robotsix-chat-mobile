@@ -191,6 +191,22 @@ class ApiService {
     }
   }
 
+  /// Validate an HTTP [response] against the shared status contract.
+  ///
+  /// On 401/403 the stale subject token is cleared (when authenticated)
+  /// and an [AuthException] is thrown; any other non-200 status raises
+  /// an [ApiException].  Centralised here so every endpoint applies
+  /// consistent auth/error handling.
+  Future<void> _checkResponse(http.Response response) async {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await _clearSubjectTokenIfAuthenticated();
+      throw AuthException(response.statusCode, response.body);
+    }
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   // ------------------------------------------------------------------
   // Chat — POST /chat returns an SSE stream
   // ------------------------------------------------------------------
@@ -300,13 +316,7 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await _client.get(uri, headers: headers);
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearSubjectTokenIfAuthenticated();
-      throw AuthException(response.statusCode, response.body);
-    }
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    await _checkResponse(response);
 
     // GET /sessions returns a Map ({"sessions": [...], "active_session_id": ...}),
     // not a bare List. Cast to Map and read the "sessions" key; casting the
@@ -332,13 +342,7 @@ class ApiService {
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
     );
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearSubjectTokenIfAuthenticated();
-      throw AuthException(response.statusCode, response.body);
-    }
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    await _checkResponse(response);
 
     return ChatSession.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
@@ -351,13 +355,7 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await _client.delete(uri, headers: headers);
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearSubjectTokenIfAuthenticated();
-      throw AuthException(response.statusCode, response.body);
-    }
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    await _checkResponse(response);
   }
 
   /// Close a session.
@@ -374,13 +372,7 @@ class ApiService {
       headers: headers,
       body: jsonEncode({'owner_id': ownerId}),
     );
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearSubjectTokenIfAuthenticated();
-      throw AuthException(response.statusCode, response.body);
-    }
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    await _checkResponse(response);
   }
 
   /// Fetch chat history (transcript) for a session.
@@ -392,13 +384,7 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     final response = await _client.get(uri, headers: headers);
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearSubjectTokenIfAuthenticated();
-      throw AuthException(response.statusCode, response.body);
-    }
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    await _checkResponse(response);
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
