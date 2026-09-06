@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.4...robotsix_chat_mobile-v0.4.0) (2026-09-06)
+
+
+### Features
+
+* Add crash reporting and observability via Firebase Crashlytics (20260906T214624Z-add-crash-reporting-and-observability-vi-42e4) ([#74](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/74)) ([7b15374](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/7b153744e68f81a35feb1c803addeb5c4a71bad2))
+
 ## [0.3.4](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.3...robotsix_chat_mobile-v0.3.4) (2026-09-05)
 
 
