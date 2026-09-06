@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_provider.dart';
+import 'observability.dart';
 import '../models/api_exception.dart';
 import '../models/chat_event.dart';
 import '../models/chat_session.dart';
@@ -191,14 +192,24 @@ class ApiService {
 
     final response = await _client.send(request);
 
+    // Correlate any crash report for this request with the session it
+    // belongs to.
+    await Observability.setCustomKey('sessionId', sessionId ?? 'none');
+
     if (response.statusCode == 401 || response.statusCode == 403) {
       final errorBody = await response.stream.bytesToString();
       await _clearSubjectTokenIfAuthenticated();
-      throw AuthException(response.statusCode, errorBody);
+      final error = AuthException(response.statusCode, errorBody);
+      await Observability.recordError(error, StackTrace.current,
+          reason: 'chat auth failure');
+      throw error;
     }
     if (response.statusCode != 200) {
       final errorBody = await response.stream.bytesToString();
-      throw ApiException(response.statusCode, errorBody);
+      final error = ApiException(response.statusCode, errorBody);
+      await Observability.recordError(error, StackTrace.current,
+          reason: 'chat request failed');
+      throw error;
     }
 
     yield* _parseSseStream(response.stream);
@@ -234,14 +245,26 @@ class ApiService {
                   timestamp: (json['timestamp'] as num?)?.toDouble() ?? 0.0,
                 );
               case 'error':
-                yield ErrorEvent(
+                final errorEvent = ErrorEvent(
                   message: (json['message'] as String?) ?? 'Unknown error',
                   code: (json['code'] as String?) ?? 'unknown',
                   correlationId: json['correlation_id'] as String?,
                 );
+                await Observability.setCustomKey(
+                    'correlationId', errorEvent.correlationId ?? 'none');
+                await Observability.recordError(
+                  StateError('SSE error frame [${errorEvent.code}]: '
+                      '${errorEvent.message}'),
+                  StackTrace.current,
+                  reason: 'SSE error event',
+                );
+                yield errorEvent;
             }
-          } on FormatException {
-            // Malformed JSON frame — skip silently.
+          } on FormatException catch (error, stackTrace) {
+            // Malformed JSON frame — skip emitting an event but report
+            // the parse failure so silent frame corruption is visible.
+            await Observability.recordError(error, stackTrace,
+                reason: 'SSE frame parse error');
           }
         }
       }
