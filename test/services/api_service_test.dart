@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -15,6 +16,22 @@ import 'package:robotsix_chat_mobile/services/auth_provider.dart';
 class MockClient extends Mock implements http.Client {}
 
 class MockAuthProvider extends Mock implements AuthProvider {}
+
+/// Render a single SSE `data:` frame terminated by a blank line.
+String _frame(Map<String, dynamic> data) => 'data: ${jsonEncode(data)}\n\n';
+
+/// Build a [http.StreamedResponse] that emits [body] as a single UTF-8
+/// chunk with the given [statusCode].
+http.StreamedResponse _sseResponse(String body, {int statusCode = 200}) =>
+    http.StreamedResponse(Stream.value(utf8.encode(body)), statusCode);
+
+/// Build a [http.StreamedResponse] that emits each entry of [chunks] as a
+/// separate UTF-8 byte chunk, to exercise buffer-boundary handling.
+http.StreamedResponse _sseChunks(List<String> chunks, {int statusCode = 200}) =>
+    http.StreamedResponse(
+      Stream.fromIterable(chunks.map(utf8.encode)),
+      statusCode,
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +56,247 @@ void main() {
         ),
       );
       expect(svc.baseUrl, 'https://chat.example.com');
+    });
+  });
+
+  group('ApiService.sendMessage', () {
+    late MockClient mockClient;
+    late MockAuthProvider mockAuth;
+
+    setUp(() {
+      mockClient = MockClient();
+      mockAuth = MockAuthProvider();
+      registerFallbackValue(http.Request('POST', Uri()));
+      when(() => mockAuth.requestHeaders())
+          .thenAnswer((_) async => <String, String>{});
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      FlutterSecureStorage.setMockInitialValues({});
+    });
+
+    ApiService buildService() => ApiService(
+          baseUrl: 'https://chat.example.com',
+          authProvider: mockAuth,
+          client: mockClient,
+        );
+
+    test('streams token events then a done event', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse(
+          _frame({'type': 'token', 'content': 'Hello'}) +
+              _frame({'type': 'token', 'content': ' world'}) +
+              _frame({
+                'type': 'done',
+                'session_id': 's-1',
+                'timestamp': 1.5,
+              }),
+        ),
+      );
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect(events, hasLength(3));
+      expect((events[0] as TokenEvent).content, 'Hello');
+      expect((events[1] as TokenEvent).content, ' world');
+      final done = events[2] as DoneEvent;
+      expect(done.sessionId, 's-1');
+      expect(done.timestamp, 1.5);
+    });
+
+    test('posts to /chat with message, ids and SSE headers', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse(
+          _frame({'type': 'done', 'session_id': 's', 'timestamp': 0}),
+        ),
+      );
+
+      await buildService()
+          .sendMessage(message: 'hello', sessionId: 'sess-1', messageId: 'm-1')
+          .toList();
+
+      final captured = verify(() => mockClient.send(captureAny())).captured;
+      final request = captured.single as http.Request;
+      expect(request.method, 'POST');
+      expect(request.url.toString(), 'https://chat.example.com/chat');
+      expect(request.headers['Accept'], 'text/event-stream');
+      final decoded = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(decoded['message'], 'hello');
+      expect(decoded['session_id'], 'sess-1');
+      expect(decoded['message_id'], 'm-1');
+      expect(decoded['owner_id'], isNotEmpty);
+    });
+
+    test('omits session_id and message_id when not provided', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse(
+          _frame({'type': 'done', 'session_id': 's', 'timestamp': 0}),
+        ),
+      );
+
+      await buildService().sendMessage(message: 'first').toList();
+
+      final captured = verify(() => mockClient.send(captureAny())).captured;
+      final decoded =
+          jsonDecode((captured.single as http.Request).body)
+              as Map<String, dynamic>;
+      expect(decoded.containsKey('session_id'), isFalse);
+      expect(decoded.containsKey('message_id'), isFalse);
+    });
+
+    test('throws AuthException on a 401 response', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse('unauthorized', statusCode: 401),
+      );
+
+      expect(
+        () => buildService().sendMessage(message: 'hi').toList(),
+        throwsA(
+          isA<AuthException>()
+              .having((e) => e.statusCode, 'statusCode', 401),
+        ),
+      );
+    });
+
+    test('throws AuthException on a 403 response', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse('forbidden', statusCode: 403),
+      );
+
+      expect(
+        () => buildService().sendMessage(message: 'hi').toList(),
+        throwsA(
+          isA<AuthException>()
+              .having((e) => e.statusCode, 'statusCode', 403),
+        ),
+      );
+    });
+
+    test('throws ApiException on a 500 response', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse('boom', statusCode: 500),
+      );
+
+      expect(
+        () => buildService().sendMessage(message: 'hi').toList(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', 500)
+              .having((e) => e.body, 'body', 'boom'),
+        ),
+      );
+    });
+
+    test('propagates a network error raised while sending', () async {
+      when(() => mockClient.send(any()))
+          .thenThrow(http.ClientException('connection refused'));
+
+      expect(
+        () => buildService().sendMessage(message: 'hi').toList(),
+        throwsA(isA<http.ClientException>()),
+      );
+    });
+
+    test('propagates a network error raised mid-stream', () async {
+      Stream<List<int>> failing() async* {
+        yield utf8.encode(_frame({'type': 'token', 'content': 'x'}));
+        throw http.ClientException('dropped');
+      }
+
+      when(() => mockClient.send(any()))
+          .thenAnswer((_) async => http.StreamedResponse(failing(), 200));
+
+      expect(
+        () => buildService().sendMessage(message: 'hi').toList(),
+        throwsA(isA<http.ClientException>()),
+      );
+    });
+
+    // -- _parseSseStream behaviour, exercised via sendMessage --------------
+
+    test('parses an error event with message, code and correlationId',
+        () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse(
+          _frame({
+            'type': 'error',
+            'message': 'bad request',
+            'code': 'BAD_REQ',
+            'correlation_id': 'corr-9',
+          }),
+        ),
+      );
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      final err = events.single as ErrorEvent;
+      expect(err.message, 'bad request');
+      expect(err.code, 'BAD_REQ');
+      expect(err.correlationId, 'corr-9');
+    });
+
+    test('applies defaults for missing token/done/error fields', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse(
+          _frame({'type': 'token'}) +
+              _frame({'type': 'done'}) +
+              _frame({'type': 'error'}),
+        ),
+      );
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect((events[0] as TokenEvent).content, '');
+      final done = events[1] as DoneEvent;
+      expect(done.sessionId, '');
+      expect(done.timestamp, 0.0);
+      final err = events[2] as ErrorEvent;
+      expect(err.message, 'Unknown error');
+      expect(err.code, 'unknown');
+      expect(err.correlationId, isNull);
+    });
+
+    test(
+        'skips comments, blank lines, malformed JSON and unknown event types',
+        () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseResponse(
+          ': keepalive\n'
+          '\n'
+          'data: \n\n'
+          'data: not-json\n\n'
+          '${_frame({'type': 'mystery', 'content': 'ignored'})}'
+          '${_frame({'type': 'token', 'content': 'survived'})}',
+        ),
+      );
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect(events, hasLength(1));
+      expect((events.single as TokenEvent).content, 'survived');
+    });
+
+    test('reassembles a frame split across chunk boundaries', () async {
+      final full = _frame({'type': 'token', 'content': 'chunked'});
+      final mid = full.length ~/ 2;
+
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => _sseChunks([full.substring(0, mid), full.substring(mid)]),
+      );
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect(events, hasLength(1));
+      expect((events.single as TokenEvent).content, 'chunked');
+    });
+
+    test('does not emit for an incomplete, unterminated frame', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async =>
+            _sseResponse('data: {"type": "token", "content": "partial"'),
+      );
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect(events, isEmpty);
     });
   });
 
