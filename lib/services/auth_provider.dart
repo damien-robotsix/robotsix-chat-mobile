@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
-import 'api_service.dart';
+import '../models/api_exception.dart';
 
 /// Pluggable authentication provider for the robotsix-chat backend.
 ///

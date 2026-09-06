@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:robotsix_chat_mobile/models/api_exception.dart';
+import 'package:robotsix_chat_mobile/models/chat_event.dart';
+import 'package:robotsix_chat_mobile/models/chat_session.dart';
 import 'package:robotsix_chat_mobile/services/api_service.dart';
 import 'package:robotsix_chat_mobile/services/auth_provider.dart';
 

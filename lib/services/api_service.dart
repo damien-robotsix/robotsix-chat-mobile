@@ -6,66 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_provider.dart';
-
-// ---------------------------------------------------------------------------
-// SSE events from the POST /chat stream
-// ---------------------------------------------------------------------------
-
-/// Events emitted by the chat backend's SSE response stream.
-sealed class ChatEvent {
-  const ChatEvent();
-}
-
-/// A content token to append to the agent's reply in order.
-class TokenEvent extends ChatEvent {
-  final String content;
-  const TokenEvent(this.content);
-}
-
-/// Terminal — the reply is complete.  Adopt [sessionId] for subsequent
-/// messages (it may differ from the one you sent).
-class DoneEvent extends ChatEvent {
-  final String sessionId;
-  final double timestamp;
-  const DoneEvent({required this.sessionId, required this.timestamp});
-}
-
-/// Terminal — the backend rejected the request.
-class ErrorEvent extends ChatEvent {
-  final String message;
-  final String code;
-  final String? correlationId;
-  const ErrorEvent({
-    required this.message,
-    required this.code,
-    this.correlationId,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Session model (lightweight, parsed from JSON)
-// ---------------------------------------------------------------------------
-
-/// A chat session returned by GET /sessions.
-class ChatSession {
-  final String sessionId;
-  final String? title;
-  final int? turnCount;
-
-  const ChatSession({
-    required this.sessionId,
-    this.title,
-    this.turnCount,
-  });
-
-  factory ChatSession.fromJson(Map<String, dynamic> json) {
-    return ChatSession(
-      sessionId: json['session_id'] as String,
-      title: json['title'] as String?,
-      turnCount: json['turn_count'] as int?,
-    );
-  }
-}
+import '../models/api_exception.dart';
+import '../models/chat_event.dart';
+import '../models/chat_session.dart';
 
 // ---------------------------------------------------------------------------
 // API service
@@ -390,31 +333,4 @@ class ApiService {
     final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
     return turns.cast<Map<String, dynamic>>();
   }
-}
-
-/// Exception raised when the backend returns a non-2xx HTTP status.
-class ApiException implements Exception {
-  final int statusCode;
-  final String body;
-
-  const ApiException(this.statusCode, this.body);
-
-  /// Human-readable message suitable for display in the UI.
-  String get message => body;
-
-  @override
-  String toString() => 'ApiException($statusCode): $body';
-}
-
-/// Thrown when the backend returns 401 or 403, indicating the current
-/// credentials have been revoked or expired.
-///
-/// The UI layer should catch this separately from generic
-/// [ApiException] and prompt the user to re-authenticate rather than
-/// showing a raw error message.
-class AuthException extends ApiException {
-  const AuthException(super.statusCode, super.body);
-
-  @override
-  String get message => 'Session expired. Please log in again from Settings.';
 }
