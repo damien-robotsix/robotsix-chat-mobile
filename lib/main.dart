@@ -1,18 +1,43 @@
+import 'dart:async';
+
 import 'package:app_links/app_links.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/chat_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/auth_provider.dart';
+import 'services/observability.dart';
 import 'services/update_service.dart';
 
 /// Entry point for the robotsix-chat mobile app.
 ///
-/// Initialises Flutter bindings, wires up the deep-link listener for
-/// SSO callbacks, and runs the [RobotsixChatApp] widget.
-void main() {
-  runApp(const RobotsixChatApp());
-  _initDeepLinks();
+/// Initialises Flutter bindings and Firebase Crashlytics for crash
+/// reporting, wires up the deep-link listener for SSO callbacks, and
+/// runs the [RobotsixChatApp] widget inside a guarded zone so that
+/// unhandled asynchronous errors are reported.
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await Firebase.initializeApp();
+    // Route framework errors (build/layout/paint) to Crashlytics.
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+  } catch (_) {
+    // Firebase may be unconfigured on this platform (e.g. missing
+    // google-services.json); continue without crash reporting rather
+    // than blocking app start-up.
+  }
+
+  runZonedGuarded(
+    () {
+      runApp(const RobotsixChatApp());
+      _initDeepLinks();
+    },
+    (error, stackTrace) =>
+        Observability.recordError(error, stackTrace, fatal: true),
+  );
 }
 
 final _appLinks = AppLinks();

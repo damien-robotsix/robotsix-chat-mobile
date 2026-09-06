@@ -9,6 +9,7 @@ import '../models/chat_message.dart';
 import '../models/chat_session.dart';
 import '../services/api_service.dart';
 import '../services/auth_provider.dart';
+import '../services/observability.dart';
 import '../services/update_service.dart';
 
 /// Chat screen backed by [ApiService] with SSE streaming and
@@ -316,8 +317,11 @@ class _ChatScreenState extends State<ChatScreen> {
       Stream<ChatEvent> stream, String agentMsgId) {
     return stream.listen(
       (event) => _onStreamEvent(event, agentMsgId),
-      onError: (error) =>
-          _handleStreamError(agentMsgId, 'Stream error: $error'),
+      onError: (Object error, StackTrace stackTrace) {
+        Observability.recordError(error, stackTrace,
+            reason: 'SSE stream error');
+        _handleStreamError(agentMsgId, 'Stream error: $error');
+      },
       onDone: () {
         if (!mounted) return;
         setState(() => _isLoading = false);
