@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.4.0...robotsix_chat_mobile-v0.5.0) (2026-09-07)
+
+
+### Features
+
+* add subsessions/monitors view ([#78](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/78)) ([921bc0a](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/921bc0a66302ec300887c48e80ac8e84f11a6edd))
+
+
+### Bug Fixes
+
+* parse /history turns as [user, assistant] pairs ([#76](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/76)) ([69e7ad8](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/69e7ad8a8d56b8bde52065de82326d577a70bf2f))
+
 ## [0.4.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.3.4...robotsix_chat_mobile-v0.4.0) (2026-09-06)
 
 
