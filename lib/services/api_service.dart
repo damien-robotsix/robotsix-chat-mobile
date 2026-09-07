@@ -10,6 +10,7 @@ import 'observability.dart';
 import '../models/api_exception.dart';
 import '../models/chat_event.dart';
 import '../models/chat_session.dart';
+import '../models/subsession.dart';
 
 // ---------------------------------------------------------------------------
 // API service
@@ -24,6 +25,8 @@ import '../models/chat_session.dart';
 /// - `DELETE /sessions/{id}` — delete a session
 /// - `POST /sessions/{id}/close` — close a session
 /// - `GET /history` — fetch transcript for a session
+/// - `GET /subsessions` — list a session's background subsessions
+/// - `POST /subsessions/{id}/close` — close a running subsession
 ///
 /// Authentication is delegated to a pluggable [AuthProvider] so the
 /// concrete token-exchange flow can be swapped in later.
@@ -355,5 +358,48 @@ class ApiService {
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
     return turns.cast<Map<String, dynamic>>();
+  }
+
+  // ------------------------------------------------------------------
+  // Subsessions
+  // ------------------------------------------------------------------
+
+  /// List the background subsessions owned by [sessionId].
+  ///
+  /// `GET /subsessions?session_id=...` returns
+  /// `{"subsessions": [snapshot, ...]}` — every subsession (all kinds,
+  /// all depths) sorted oldest-first, without transcripts.
+  Future<List<Subsession>> listSubsessions(String sessionId) async {
+    final uri = Uri.parse('$baseUrl/subsessions?session_id=$sessionId');
+    final headers = await _authProvider.requestHeaders();
+
+    final response = await _client.get(uri, headers: headers);
+    await _checkResponse(response);
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = decoded['subsessions'] as List<dynamic>? ?? const <dynamic>[];
+    return list
+        .map((e) => Subsession.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Close a running subsession from the UI.
+  ///
+  /// `POST /subsessions/{id}/close` cancels the worker and delivers a
+  /// best-effort summary to its parent conversation.  Idempotent for an
+  /// already-terminal subsession.
+  Future<void> closeSubsession(String subsessionId) async {
+    final uri = Uri.parse('$baseUrl/subsessions/$subsessionId/close');
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      ...await _authProvider.requestHeaders(),
+    };
+
+    final response = await _client.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{}),
+    );
+    await _checkResponse(response);
   }
 }

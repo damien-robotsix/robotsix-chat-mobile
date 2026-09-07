@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/chat_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/subsessions_screen.dart';
 import 'services/auth_provider.dart';
 import 'services/observability.dart';
 import 'services/update_service.dart';
@@ -194,6 +195,7 @@ class RobotsixChatApp extends StatelessWidget {
       routes: {
         '/': (_) => const ChatScreen(),
         '/settings': (_) => const SettingsScreen(),
+        '/subsessions': (_) => const SubsessionsScreen(),
       },
     );
   }
