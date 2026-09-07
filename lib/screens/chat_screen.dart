@@ -419,6 +419,11 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.account_tree),
+            tooltip: 'Subsessions & monitors',
+            onPressed: () => Navigator.pushNamed(context, '/subsessions'),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
             onPressed: _openSettings,
