@@ -7,3 +7,7 @@ Do not open a public issue for security problems.
 ## Response Time
 This project is maintained by a single person and cannot guarantee a response
 time. Reports are handled on a best-effort basis.
+
+## Coordinated Disclosure
+This project follows coordinated disclosure: please allow a reasonable window
+to release a fix before any public disclosure.
