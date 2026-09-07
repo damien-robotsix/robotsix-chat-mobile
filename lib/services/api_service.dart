@@ -343,8 +343,11 @@ class ApiService {
 
   /// Fetch chat history (transcript) for a session.
   ///
-  /// The backend returns an object of the form `{"turns": [...]}`; the
-  /// transcript turns are read from the `turns` field.
+  /// The backend returns an object of the form `{"turns": [...]}` where each
+  /// turn is a `[user, assistant]` message pair (newest last).  Those pairs
+  /// are flattened into `{role, content}` maps in transcript order so the
+  /// chat screen can render them directly.  A turn that already arrives as a
+  /// `{role, content}` map (legacy shape) is passed through unchanged.
   Future<List<Map<String, dynamic>>> getHistory(String sessionId) async {
     final uri = Uri.parse('$baseUrl/history?session_id=$sessionId');
     final headers = await _authProvider.requestHeaders();
@@ -354,6 +357,18 @@ class ApiService {
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
-    return turns.cast<Map<String, dynamic>>();
+
+    final messages = <Map<String, dynamic>>[];
+    for (final turn in turns) {
+      if (turn is List && turn.length == 2) {
+        final user = turn[0]?.toString() ?? '';
+        final assistant = turn[1]?.toString() ?? '';
+        messages.add({'role': 'user', 'content': user});
+        messages.add({'role': 'assistant', 'content': assistant});
+      } else if (turn is Map<String, dynamic>) {
+        messages.add(turn);
+      }
+    }
+    return messages;
   }
 }
