@@ -24,11 +24,17 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _messages = <ChatMessage>[];
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   int _nextId = 0;
   ApiService? _apiService;
   bool _isLoading = false;
   String? _sessionId;
   StreamSubscription<ChatEvent>? _activeStream;
+
+  /// Whether the full transcript is shown (true) or a compact summary
+  /// card (false). Opening a session defaults to the compact summary; the
+  /// full transcript is reached via an explicit expand affordance.
+  bool _showSummary = true;
 
   // Session management state
   List<ChatSession> _sessions = [];
@@ -136,6 +142,9 @@ class _ChatScreenState extends State<ChatScreen> {
       _sessionId = sessionId;
       _messages.clear();
       _isLoading = true;
+      // Opening a conversation shows the compact summary first; the full
+      // transcript is reached via the expand affordance.
+      _showSummary = true;
     });
     try {
       final history = await _apiService!.getHistory(sessionId);
@@ -154,6 +163,9 @@ class _ChatScreenState extends State<ChatScreen> {
           }
           _isLoading = false;
         });
+        // Bring the most recent message into view once the transcript has
+        // rendered.
+        _scrollToBottom();
       }
     } on AuthException {
       if (mounted) {
@@ -284,6 +296,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _authSub?.cancel();
     _activeStream?.cancel();
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -301,6 +314,7 @@ class _ChatScreenState extends State<ChatScreen> {
     switch (event) {
       case TokenEvent(:final content):
         setState(() => _appendToMessage(agentMsgId, content));
+        _scrollToBottom();
       case DoneEvent(:final sessionId):
         setState(() {
           _sessionId = sessionId;
@@ -343,6 +357,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ));
       _controller.clear();
       _isLoading = true;
+      // Sending a message transitions from the compact summary to the
+      // live transcript so the newest content stays in view.
+      _showSummary = false;
     });
 
     final agentMsgId = '${_nextId++}';
@@ -354,6 +371,7 @@ class _ChatScreenState extends State<ChatScreen> {
         timestamp: DateTime.now(),
       ));
     });
+    _scrollToBottom();
 
     try {
       _apiService ??= await ApiService.fromStorage();
@@ -444,33 +462,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       style: TextStyle(fontSize: 16),
                     ),
                   )
-                : ListView.builder(
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _messages[index];
-                      return ListTile(
-                        title: Align(
-                          alignment: msg.isUser
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: msg.isUser
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(msg.text),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                : _showSummary
+                    ? _buildSummaryCard()
+                    : _buildTranscriptList(),
           ),
           // Input bar
           SafeArea(
@@ -500,6 +494,124 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  /// Compact summary card shown by default when a conversation has messages.
+  /// Tapping it (or its button) expands to the full transcript.
+  Widget _buildSummaryCard() {
+    final lastMessage = _messages.isNotEmpty ? _messages.last : null;
+    return Center(
+      child: SingleChildScrollView(
+        child: Card(
+          margin: const EdgeInsets.all(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _expandTranscript,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.article_outlined),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _sessionTitle(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      const Icon(Icons.expand_more),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_messages.length} message${_messages.length == 1 ? '' : 's'}',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  if (lastMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      lastMessage.text,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _expandTranscript,
+                      icon: const Icon(Icons.unfold_more),
+                      label: const Text('Show full transcript'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The full conversation transcript, scrolled to the newest (bottom)
+  /// message on first render.
+  Widget _buildTranscriptList() {
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final msg = _messages[index];
+        return ListTile(
+          title: Align(
+            alignment: msg.isUser
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: msg.isUser
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(msg.text),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Expand from the compact summary to the full transcript.
+  void _expandTranscript() {
+    setState(() => _showSummary = false);
+    _scrollToBottom();
+  }
+
+  /// Bring the most recent (bottom) message into view once the transcript
+  /// has laid out.
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    });
+  }
+
+  String _sessionTitle() {
+    final id = _sessionId;
+    if (id == null) return 'Conversation';
+    for (final s in _sessions) {
+      if (s.sessionId == id && s.title != null && s.title!.isNotEmpty) {
+        return s.title!;
+      }
+    }
+    return 'Conversation';
   }
 
   Widget _buildSessionBar() {

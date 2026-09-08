@@ -394,6 +394,10 @@ IconData _kindIcon(String kind) {
       return Icons.forum;
     case 'on_close':
       return Icons.exit_to_app;
+    case 'evergoing':
+    case 'root':
+    case 'parent':
+      return Icons.layers;
     case 'task':
     default:
       return Icons.task_alt;
@@ -410,6 +414,10 @@ String _kindLabel(String kind) {
       return 'Side-chat';
     case 'on_close':
       return 'On-close task';
+    case 'evergoing':
+    case 'root':
+    case 'parent':
+      return 'Evergoing';
     case 'task':
     default:
       return 'Task';
