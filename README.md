@@ -119,7 +119,7 @@ After installing the APK and pointing it at a live robotsix-chat backend:
 1. **Configure the backend** — open Settings (gear icon), enter the **Backend Base URL** for your robotsix-chat instance.
 2. **Log in** — tap **Log in with SSO**, complete the fleet SSO login in your browser, and wait for the app to capture the redirect.
 3. **Verify conversation sync** — return to the chat screen and open the drawer (hamburger menu). Your existing conversations from the web should appear in the list (synced by your SSO identity).
-4. **Open an existing conversation** — select a previous conversation from the drawer to view its full transcript.
+4. **Open an existing conversation** — select a previous conversation from the drawer. The session opens with a compact summary card by default. Tap the "Show full transcript" button to expand and view the full conversation history.
 5. **Start a new conversation or continue** — create a new session or send a message in an existing one and verify it appears in the chat history.
 6. **Receive an SSE response** — the agent's reply should stream back in real time as the response arrives.
 7. **Session management** — use the drawer to switch between sessions, close completed sessions, or delete unwanted ones.
