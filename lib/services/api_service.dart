@@ -54,10 +54,10 @@ class ApiService {
     http.Client? client,
     Duration connectionTimeout = kConnectionTimeout,
     Duration readTimeout = kReadTimeout,
-  })  : _authProvider = authProvider,
-        _client = client ?? http.Client(),
-        _connectionTimeout = connectionTimeout,
-        _readTimeout = readTimeout;
+  }) : _authProvider = authProvider,
+       _client = client ?? http.Client(),
+       _connectionTimeout = connectionTimeout,
+       _readTimeout = readTimeout;
 
   // ------------------------------------------------------------------
   // Persistent config helpers
@@ -92,10 +92,10 @@ class ApiService {
   static Future<String> getOwnerId() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final subjectToken =
-        await OidcTokenExchangeAuthProvider.getSubjectToken();
-    final subject =
-        OidcTokenExchangeAuthProvider.subjectFromToken(subjectToken);
+    final subjectToken = await OidcTokenExchangeAuthProvider.getSubjectToken();
+    final subject = OidcTokenExchangeAuthProvider.subjectFromToken(
+      subjectToken,
+    );
     if (subject != null) {
       // Migrate/replace any locally-generated random id with the
       // authenticated SSO subject.
@@ -115,8 +115,10 @@ class ApiService {
   static String _generateId(int length) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final rng = Random();
-    return List.generate(length, (_) => chars[rng.nextInt(chars.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
   }
 
   /// Create an [ApiService] from previously-stored credentials.
@@ -194,10 +196,7 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final body = <String, dynamic>{
-      'message': message,
-      'owner_id': ownerId,
-    };
+    final body = <String, dynamic>{'message': message, 'owner_id': ownerId};
     if (sessionId != null) body['session_id'] = sessionId;
     if (messageId != null) body['message_id'] = messageId;
 
@@ -227,15 +226,21 @@ class ApiService {
       final errorBody = await response.stream.bytesToString();
       await _clearSubjectTokenIfAuthenticated();
       final error = AuthException(response.statusCode, errorBody);
-      await Observability.recordError(error, StackTrace.current,
-          reason: 'chat auth failure');
+      await Observability.recordError(
+        error,
+        StackTrace.current,
+        reason: 'chat auth failure',
+      );
       throw error;
     }
     if (response.statusCode != 200) {
       final errorBody = await response.stream.bytesToString();
       final error = ApiException(response.statusCode, errorBody);
-      await Observability.recordError(error, StackTrace.current,
-          reason: 'chat request failed');
+      await Observability.recordError(
+        error,
+        StackTrace.current,
+        reason: 'chat request failed',
+      );
       throw error;
     }
 
@@ -278,10 +283,14 @@ class ApiService {
                   correlationId: json['correlation_id'] as String?,
                 );
                 await Observability.setCustomKey(
-                    'correlationId', errorEvent.correlationId ?? 'none');
+                  'correlationId',
+                  errorEvent.correlationId ?? 'none',
+                );
                 await Observability.recordError(
-                  StateError('SSE error frame [${errorEvent.code}]: '
-                      '${errorEvent.message}'),
+                  StateError(
+                    'SSE error frame [${errorEvent.code}]: '
+                    '${errorEvent.message}',
+                  ),
                   StackTrace.current,
                   reason: 'SSE error event',
                 );
@@ -290,8 +299,11 @@ class ApiService {
           } on FormatException catch (error, stackTrace) {
             // Malformed JSON frame — skip emitting an event but report
             // the parse failure so silent frame corruption is visible.
-            await Observability.recordError(error, stackTrace,
-                reason: 'SSE frame parse error');
+            await Observability.recordError(
+              error,
+              stackTrace,
+              reason: 'SSE frame parse error',
+            );
           }
         }
       }
@@ -344,7 +356,8 @@ class ApiService {
       await _checkResponse(response);
 
       return ChatSession.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }, label: 'createSession');
   }
 

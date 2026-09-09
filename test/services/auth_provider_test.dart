@@ -81,8 +81,7 @@ void main() {
       expect(provider.isLoggedIn, isFalse);
     });
 
-    test(
-        'returns true after a successful exchange even when subjectToken '
+    test('returns true after a successful exchange even when subjectToken '
         'is null (cached access token still valid)', () async {
       final now = DateTime(2026, 8, 21, 12);
       when(
@@ -284,10 +283,7 @@ void main() {
         client: mockClient,
       );
 
-      expect(
-        () => provider.requestHeaders(),
-        throwsA(isA<ApiException>()),
-      );
+      expect(() => provider.requestHeaders(), throwsA(isA<ApiException>()));
     });
   });
 
@@ -358,32 +354,31 @@ void main() {
       );
     });
 
-    test('throws FormatException when response is missing access_token',
-        () async {
-      when(
-        () => mockClient.post(
-          any(),
-          headers: any(named: 'headers'),
-          body: any(named: 'body'),
-        ),
-      ).thenAnswer(
-        (_) async => http.Response(
-          jsonEncode({'other_field': 'value'}),
-          200,
-        ),
-      );
+    test(
+      'throws FormatException when response is missing access_token',
+      () async {
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(jsonEncode({'other_field': 'value'}), 200),
+        );
 
-      final provider = OidcTokenExchangeAuthProvider(
-        baseUrl: 'https://chat.example.com',
-        subjectToken: 'subj',
-        client: mockClient,
-      );
+        final provider = OidcTokenExchangeAuthProvider(
+          baseUrl: 'https://chat.example.com',
+          subjectToken: 'subj',
+          client: mockClient,
+        );
 
-      expect(
-        () => provider.exchangeCodeForToken(),
-        throwsA(isA<FormatException>()),
-      );
-    });
+        expect(
+          () => provider.exchangeCodeForToken(),
+          throwsA(isA<FormatException>()),
+        );
+      },
+    );
 
     test('accepts "token" field as fallback for access_token', () async {
       when(
@@ -508,38 +503,40 @@ void main() {
   // Token lifecycle edge cases
   // ---------------------------------------------------------------------------
   group('token lifecycle', () {
-    test('no expires_in — token is never cached (exchanged every call)',
-        () async {
-      when(
-        () => mockClient.post(
-          any(),
-          headers: any(named: 'headers'),
-          body: any(named: 'body'),
-        ),
-      ).thenAnswer(
-        (_) async => http.Response(
-          jsonEncode({'access_token': 'no-expiry-token'}),
-          200,
-        ),
-      );
+    test(
+      'no expires_in — token is never cached (exchanged every call)',
+      () async {
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({'access_token': 'no-expiry-token'}),
+            200,
+          ),
+        );
 
-      final provider = OidcTokenExchangeAuthProvider(
-        baseUrl: 'https://chat.example.com',
-        subjectToken: 'subj',
-        client: mockClient,
-      );
+        final provider = OidcTokenExchangeAuthProvider(
+          baseUrl: 'https://chat.example.com',
+          subjectToken: 'subj',
+          client: mockClient,
+        );
 
-      await provider.requestHeaders();
-      await provider.requestHeaders();
+        await provider.requestHeaders();
+        await provider.requestHeaders();
 
-      verify(
-        () => mockClient.post(
-          any(),
-          headers: any(named: 'headers'),
-          body: any(named: 'body'),
-        ),
-      ).called(2);
-    });
+        verify(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).called(2);
+      },
+    );
 
     test('clock skew margin — token refreshed before hard expiry', () async {
       final now = DateTime(2026, 8, 21, 12, 0, 0);
@@ -615,26 +612,22 @@ void main() {
     test('emits true when subject token is saved', () async {
       // Subscribe BEFORE triggering the event — broadcast streams only
       // deliver to active subscribers.
-      final emitted =
-          OidcTokenExchangeAuthProvider.authStateChanges.first;
+      final emitted = OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.saveSubjectToken('test-token');
       expect(await emitted, isTrue);
 
       // Clean up
-      final cleanup =
-          OidcTokenExchangeAuthProvider.authStateChanges.first;
+      final cleanup = OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
       await cleanup;
     });
 
     test('emits false when subject token is cleared', () async {
-      final trueEvent =
-          OidcTokenExchangeAuthProvider.authStateChanges.first;
+      final trueEvent = OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.saveSubjectToken('test-token');
       await trueEvent;
 
-      final falseEvent =
-          OidcTokenExchangeAuthProvider.authStateChanges.first;
+      final falseEvent = OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
       expect(await falseEvent, isFalse);
     });
@@ -646,7 +639,9 @@ void main() {
   group('handleAuthCallback', () {
     test('extracts token from URI and persists it', () async {
       final uri = Uri.parse('robotsixchat://auth/callback?token=my-sso-token');
-      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(
+        uri,
+      );
 
       expect(result, 'my-sso-token');
       final stored = await OidcTokenExchangeAuthProvider.getSubjectToken();
@@ -654,22 +649,25 @@ void main() {
 
       // Clean up — subscribe before clearing so the broadcast event is
       // not lost.
-      final cleanup =
-          OidcTokenExchangeAuthProvider.authStateChanges.first;
+      final cleanup = OidcTokenExchangeAuthProvider.authStateChanges.first;
       await OidcTokenExchangeAuthProvider.clearSubjectToken();
       await cleanup;
     });
 
     test('returns null when token parameter is missing', () async {
       final uri = Uri.parse('robotsixchat://auth/callback');
-      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(
+        uri,
+      );
 
       expect(result, isNull);
     });
 
     test('returns null when token parameter is empty', () async {
       final uri = Uri.parse('robotsixchat://auth/callback?token=');
-      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(uri);
+      final result = await OidcTokenExchangeAuthProvider.handleAuthCallback(
+        uri,
+      );
 
       expect(result, isNull);
     });
@@ -678,7 +676,8 @@ void main() {
   group('OidcTokenExchangeAuthProvider.subjectFromToken', () {
     test('extracts the sub claim from a signed JWT', () {
       // Payload: {"sub":"sso-user-42"}
-      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+      const jwt =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
           'eyJzdWIiOiJzc28tdXNlci00MiJ9.'
           'c2lnbmF0dXJl';
 
@@ -702,7 +701,8 @@ void main() {
 
     test('returns null when the sub claim is absent', () {
       // Payload: {"name":"nobody"}
-      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+      const jwt =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
           'eyJuYW1lIjoibm9ib2R5In0.'
           'c2lnbmF0dXJl';
 
