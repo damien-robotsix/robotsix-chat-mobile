@@ -1,0 +1,50 @@
+name: tmp-dart-format-fix
+
+on:
+  push:
+    branches:
+      - mill/20260906T194711Z-enforce-dart-formatting-in-ci-with-dart-4655
+
+concurrency:
+  group: tmp-dart-format-fix-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show head sha
+        run: git rev-parse HEAD || true
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2  # v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: false
+
+      - name: Run dart format
+        run: dart format .
+
+      - name: Commit formatted files, drop helper workflow, push
+        run: |
+          set -euo pipefail
+          git config user.name "robotsix-mill"
+          git config user.email "mill@robotsix.local"
+          git add -A
+          rm -f .github/workflows/tmp-dart-format-fix.yml
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+          else
+            git commit -q -m "chore: apply dart format to lib/ and test/"
+          fi
+          git push
+          git rev-parse HEAD
+
+      - name: Verify the CI dart-format check now passes
+        run: dart format --output=none --set-exit-if-changed .
