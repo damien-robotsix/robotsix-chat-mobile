@@ -74,21 +74,17 @@ void main() {
     });
 
     ApiService buildService() => ApiService(
-          baseUrl: 'https://chat.example.com',
-          authProvider: mockAuth,
-          client: mockClient,
-        );
+      baseUrl: 'https://chat.example.com',
+      authProvider: mockAuth,
+      client: mockClient,
+    );
 
     test('streams token events then a done event', () async {
       when(() => mockClient.send(any())).thenAnswer(
         (_) async => _sseResponse(
           _frame({'type': 'token', 'content': 'Hello'}) +
               _frame({'type': 'token', 'content': ' world'}) +
-              _frame({
-                'type': 'done',
-                'session_id': 's-1',
-                'timestamp': 1.5,
-              }),
+              _frame({'type': 'done', 'session_id': 's-1', 'timestamp': 1.5}),
         ),
       );
 
@@ -135,45 +131,41 @@ void main() {
       await buildService().sendMessage(message: 'first').toList();
 
       final captured = verify(() => mockClient.send(captureAny())).captured;
-      final decoded =
-          jsonDecode((captured.single as http.Request).body)
-              as Map<String, dynamic>;
+      final decoded = jsonDecode(
+        (captured.single as http.Request).body,
+      ) as Map<String, dynamic>;
       expect(decoded.containsKey('session_id'), isFalse);
       expect(decoded.containsKey('message_id'), isFalse);
     });
 
     test('throws AuthException on a 401 response', () async {
-      when(() => mockClient.send(any())).thenAnswer(
-        (_) async => _sseResponse('unauthorized', statusCode: 401),
-      );
+      when(
+        () => mockClient.send(any()),
+      ).thenAnswer((_) async => _sseResponse('unauthorized', statusCode: 401));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
         throwsA(
-          isA<AuthException>()
-              .having((e) => e.statusCode, 'statusCode', 401),
+          isA<AuthException>().having((e) => e.statusCode, 'statusCode', 401),
         ),
       );
     });
 
     test('throws AuthException on a 403 response', () async {
-      when(() => mockClient.send(any())).thenAnswer(
-        (_) async => _sseResponse('forbidden', statusCode: 403),
-      );
+      when(() => mockClient.send(any()))
+          .thenAnswer((_) async => _sseResponse('forbidden', statusCode: 403));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
         throwsA(
-          isA<AuthException>()
-              .having((e) => e.statusCode, 'statusCode', 403),
+          isA<AuthException>().having((e) => e.statusCode, 'statusCode', 403),
         ),
       );
     });
 
     test('throws ApiException on a 500 response', () async {
-      when(() => mockClient.send(any())).thenAnswer(
-        (_) async => _sseResponse('boom', statusCode: 500),
-      );
+      when(() => mockClient.send(any()))
+          .thenAnswer((_) async => _sseResponse('boom', statusCode: 500));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
@@ -212,26 +204,28 @@ void main() {
 
     // -- _parseSseStream behaviour, exercised via sendMessage --------------
 
-    test('parses an error event with message, code and correlationId',
-        () async {
-      when(() => mockClient.send(any())).thenAnswer(
-        (_) async => _sseResponse(
-          _frame({
-            'type': 'error',
-            'message': 'bad request',
-            'code': 'BAD_REQ',
-            'correlation_id': 'corr-9',
-          }),
-        ),
-      );
+    test(
+      'parses an error event with message, code and correlationId',
+      () async {
+        when(() => mockClient.send(any())).thenAnswer(
+          (_) async => _sseResponse(
+            _frame({
+              'type': 'error',
+              'message': 'bad request',
+              'code': 'BAD_REQ',
+              'correlation_id': 'corr-9',
+            }),
+          ),
+        );
 
-      final events = await buildService().sendMessage(message: 'hi').toList();
+        final events = await buildService().sendMessage(message: 'hi').toList();
 
-      final err = events.single as ErrorEvent;
-      expect(err.message, 'bad request');
-      expect(err.code, 'BAD_REQ');
-      expect(err.correlationId, 'corr-9');
-    });
+        final err = events.single as ErrorEvent;
+        expect(err.message, 'bad request');
+        expect(err.code, 'BAD_REQ');
+        expect(err.correlationId, 'corr-9');
+      },
+    );
 
     test('applies defaults for missing token/done/error fields', () async {
       when(() => mockClient.send(any())).thenAnswer(
@@ -255,24 +249,25 @@ void main() {
     });
 
     test(
-        'skips comments, blank lines, malformed JSON and unknown event types',
-        () async {
-      when(() => mockClient.send(any())).thenAnswer(
-        (_) async => _sseResponse(
-          ': keepalive\n'
-          '\n'
-          'data: \n\n'
-          'data: not-json\n\n'
-          '${_frame({'type': 'mystery', 'content': 'ignored'})}'
-          '${_frame({'type': 'token', 'content': 'survived'})}',
-        ),
-      );
+      'skips comments, blank lines, malformed JSON and unknown event types',
+      () async {
+        when(() => mockClient.send(any())).thenAnswer(
+          (_) async => _sseResponse(
+            ': keepalive\n'
+            '\n'
+            'data: \n\n'
+            'data: not-json\n\n'
+            '${_frame({'type': 'mystery', 'content': 'ignored'})}'
+            '${_frame({'type': 'token', 'content': 'survived'})}',
+          ),
+        );
 
-      final events = await buildService().sendMessage(message: 'hi').toList();
+        final events = await buildService().sendMessage(message: 'hi').toList();
 
-      expect(events, hasLength(1));
-      expect((events.single as TokenEvent).content, 'survived');
-    });
+        expect(events, hasLength(1));
+        expect((events.single as TokenEvent).content, 'survived');
+      },
+    );
 
     test('reassembles a frame split across chunk boundaries', () async {
       final full = _frame({'type': 'token', 'content': 'chunked'});
@@ -320,21 +315,23 @@ void main() {
       expect(ownerId, 'sso-user-42');
     });
 
-    test('replaces a previously-generated random id with the subject',
-        () async {
-      SharedPreferences.setMockInitialValues(
-          <String, Object>{'owner_id': 'random-device-id'});
-      await OidcTokenExchangeAuthProvider.saveSubjectToken(jwtForSsoUser42);
+    test(
+      'replaces a previously-generated random id with the subject',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'owner_id': 'random-device-id',
+        });
+        await OidcTokenExchangeAuthProvider.saveSubjectToken(jwtForSsoUser42);
 
-      final ownerId = await ApiService.getOwnerId();
+        final ownerId = await ApiService.getOwnerId();
 
-      expect(ownerId, 'sso-user-42');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('owner_id'), 'sso-user-42');
-    });
+        expect(ownerId, 'sso-user-42');
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('owner_id'), 'sso-user-42');
+      },
+    );
 
-    test('falls back to a stable per-install id when not logged in',
-        () async {
+    test('falls back to a stable per-install id when not logged in', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
 
       final first = await ApiService.getOwnerId();
@@ -578,10 +575,7 @@ void main() {
         client: mockClient,
       );
 
-      expect(
-        () => provider.requestHeaders(),
-        throwsA(isA<ApiException>()),
-      );
+      expect(() => provider.requestHeaders(), throwsA(isA<ApiException>()));
     });
   });
 
@@ -649,25 +643,17 @@ void main() {
       test('returns parsed session list on 200', () async {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async {
-          return http.Response(
-            jsonEncode({
-              'sessions': [
-                {
-                  'session_id': 's1',
-                  'title': 'First',
-                  'turn_count': 5,
-                },
-                {
-                  'session_id': 's2',
-                  'title': 'Second',
-                  'turn_count': 0,
-                },
-              ],
-              'active_session_id': 's1',
-            }),
-            200,
-          );
-        });
+              return http.Response(
+                jsonEncode({
+                  'sessions': [
+                    {'session_id': 's1', 'title': 'First', 'turn_count': 5},
+                    {'session_id': 's2', 'title': 'Second', 'turn_count': 0},
+                  ],
+                  'active_session_id': 's1',
+                }),
+                200,
+              );
+            });
 
         final sessions = await apiService.listSessions();
 
@@ -679,12 +665,10 @@ void main() {
       });
 
       test('returns empty list when sessions key is missing', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async {
-          return http.Response(
-            jsonEncode({'active_session_id': null}),
-            200,
-          );
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async {
+          return http.Response(jsonEncode({'active_session_id': null}), 200);
         });
 
         final sessions = await apiService.listSessions();
@@ -702,30 +686,32 @@ void main() {
         );
       });
 
-      test('does not wipe a saved subject token on a stale-client 401',
-          () async {
-        // A stale client built (token-less) before login must not wipe a
-        // credential saved by a newer auth flow when it receives a 401.
-        await OidcTokenExchangeAuthProvider.saveSubjectToken('tok-123');
-        final staleService = ApiService(
-          baseUrl: 'https://chat.example.com',
-          authProvider: OidcTokenExchangeAuthProvider(
+      test(
+        'does not wipe a saved subject token on a stale-client 401',
+        () async {
+          // A stale client built (token-less) before login must not wipe a
+          // credential saved by a newer auth flow when it receives a 401.
+          await OidcTokenExchangeAuthProvider.saveSubjectToken('tok-123');
+          final staleService = ApiService(
             baseUrl: 'https://chat.example.com',
-          ),
-          client: mockClient,
-        );
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('unauthorized', 401));
+            authProvider: OidcTokenExchangeAuthProvider(
+              baseUrl: 'https://chat.example.com',
+            ),
+            client: mockClient,
+          );
+          when(() => mockClient.get(any(), headers: any(named: 'headers')))
+              .thenAnswer((_) async => http.Response('unauthorized', 401));
 
-        await expectLater(
-          staleService.listSessions(),
-          throwsA(isA<AuthException>()),
-        );
-        expect(
-          await OidcTokenExchangeAuthProvider.getSubjectToken(),
-          'tok-123',
-        );
-      });
+          await expectLater(
+            staleService.listSessions(),
+            throwsA(isA<AuthException>()),
+          );
+          expect(
+            await OidcTokenExchangeAuthProvider.getSubjectToken(),
+            'tok-123',
+          );
+        },
+      );
 
       test('clears the subject token on a genuine 401 when the client has '
           'one', () async {
@@ -759,10 +745,7 @@ void main() {
           authedService.listSessions(),
           throwsA(isA<AuthException>()),
         );
-        expect(
-          await OidcTokenExchangeAuthProvider.getSubjectToken(),
-          isNull,
-        );
+        expect(await OidcTokenExchangeAuthProvider.getSubjectToken(), isNull);
       });
 
       test('throws ApiException on non-200', () async {
@@ -780,10 +763,13 @@ void main() {
 
     group('createSession', () {
       test('returns created session on 200', () async {
-        when(() => mockClient.post(any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body')))
-            .thenAnswer((_) async {
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async {
           return http.Response(
             jsonEncode({
               'session_id': 'new-session',
@@ -801,10 +787,13 @@ void main() {
       });
 
       test('throws AuthException on 403', () async {
-        when(() => mockClient.post(any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body')))
-            .thenAnswer((_) async => http.Response('forbidden', 403));
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('forbidden', 403));
 
         await expectLater(
           apiService.createSession(),
@@ -813,10 +802,13 @@ void main() {
       });
 
       test('throws ApiException on non-200', () async {
-        when(() => mockClient.post(any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body')))
-            .thenAnswer((_) async => http.Response('bad request', 400));
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('bad request', 400));
 
         await expectLater(
           apiService.createSession(),
@@ -861,19 +853,25 @@ void main() {
 
     group('closeSession', () {
       test('completes on 200', () async {
-        when(() => mockClient.post(any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body')))
-            .thenAnswer((_) async => http.Response('', 200));
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', 200));
 
         await apiService.closeSession('s1');
       });
 
       test('throws ApiException on non-200', () async {
-        when(() => mockClient.post(any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body')))
-            .thenAnswer((_) async => http.Response('conflict', 409));
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('conflict', 409));
 
         await expectLater(
           apiService.closeSession('s1'),
@@ -882,10 +880,13 @@ void main() {
       });
 
       test('throws AuthException on 403', () async {
-        when(() => mockClient.post(any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body')))
-            .thenAnswer((_) async => http.Response('forbidden', 403));
+        when(
+          () => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('forbidden', 403));
 
         await expectLater(
           apiService.closeSession('s1'),
@@ -897,20 +898,19 @@ void main() {
     // -- getHistory ----------------------------------------------------
 
     group('getHistory', () {
-      test('parses the turns field of the {"turns": [...]} response',
-          () async {
+      test('parses the turns field of the {"turns": [...]} response', () async {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async {
-          return http.Response(
-            jsonEncode({
-              'turns': [
-                {'role': 'user', 'content': 'hello'},
-                {'role': 'assistant', 'content': 'hi there'},
-              ],
-            }),
-            200,
-          );
-        });
+              return http.Response(
+                jsonEncode({
+                  'turns': [
+                    {'role': 'user', 'content': 'hello'},
+                    {'role': 'assistant', 'content': 'hi there'},
+                  ],
+                }),
+                200,
+              );
+            });
 
         final history = await apiService.getHistory('s1');
 
@@ -932,20 +932,14 @@ void main() {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async => http.Response('not found', 404));
 
-        expect(
-          apiService.getHistory('s1'),
-          throwsA(isA<ApiException>()),
-        );
+        expect(apiService.getHistory('s1'), throwsA(isA<ApiException>()));
       });
 
       test('throws AuthException on 401', () async {
         when(() => mockClient.get(any(), headers: any(named: 'headers')))
             .thenAnswer((_) async => http.Response('unauthorized', 401));
 
-        expect(
-          apiService.getHistory('s1'),
-          throwsA(isA<AuthException>()),
-        );
+        expect(apiService.getHistory('s1'), throwsA(isA<AuthException>()));
       });
     });
   });

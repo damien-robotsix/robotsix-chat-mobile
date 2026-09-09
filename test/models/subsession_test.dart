@@ -63,15 +63,17 @@ void main() {
 
     test('isActive is true only for live statuses', () {
       for (final status in ['running', 'waiting', 'sleeping', 'paused']) {
-        final sub = Subsession.fromJson(
-          {'subsession_id': 's', 'status': status},
-        );
+        final sub = Subsession.fromJson({
+          'subsession_id': 's',
+          'status': status,
+        });
         expect(sub.isActive, isTrue, reason: status);
       }
       for (final status in ['closed', 'failed', 'interrupted']) {
-        final sub = Subsession.fromJson(
-          {'subsession_id': 's', 'status': status},
-        );
+        final sub = Subsession.fromJson({
+          'subsession_id': 's',
+          'status': status,
+        });
         expect(sub.isActive, isFalse, reason: status);
       }
     });

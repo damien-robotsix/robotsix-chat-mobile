@@ -75,12 +75,7 @@ class Subsession {
     );
   }
 
-  static const _activeStatuses = {
-    'running',
-    'waiting',
-    'sleeping',
-    'paused',
-  };
+  static const _activeStatuses = {'running', 'waiting', 'sleeping', 'paused'};
 
   /// Whether this subsession still counts as live (not closed/failed/
   /// interrupted).

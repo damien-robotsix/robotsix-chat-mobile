@@ -50,8 +50,9 @@ class _ChatScreenState extends State<ChatScreen> {
     // Re-initialise the API client whenever auth state becomes true (e.g.
     // after SSO login), so the chat screen stops using a stale token-less
     // client built before login.
-    _authSub =
-        OidcTokenExchangeAuthProvider.authStateChanges.listen((isLoggedIn) {
+    _authSub = OidcTokenExchangeAuthProvider.authStateChanges.listen((
+      isLoggedIn,
+    ) {
       if (isLoggedIn && mounted) {
         _initApiService();
       }
@@ -122,9 +123,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -154,12 +154,14 @@ class _ChatScreenState extends State<ChatScreen> {
           for (final entry in history) {
             final role = entry['role'] as String? ?? 'user';
             final content = entry['content'] as String? ?? '';
-            _messages.add(ChatMessage(
-              id: '${_nextId++}',
-              text: content,
-              isUser: role == 'user',
-              timestamp: DateTime.now(),
-            ));
+            _messages.add(
+              ChatMessage(
+                id: '${_nextId++}',
+                text: content,
+                isUser: role == 'user',
+                timestamp: DateTime.now(),
+              ),
+            );
           }
           _isLoading = false;
         });
@@ -205,9 +207,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -226,9 +227,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -328,12 +328,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   StreamSubscription<ChatEvent> _subscribeToStream(
-      Stream<ChatEvent> stream, String agentMsgId) {
+    Stream<ChatEvent> stream,
+    String agentMsgId,
+  ) {
     return stream.listen(
       (event) => _onStreamEvent(event, agentMsgId),
       onError: (Object error, StackTrace stackTrace) {
-        Observability.recordError(error, stackTrace,
-            reason: 'SSE stream error');
+        Observability.recordError(
+          error,
+          stackTrace,
+          reason: 'SSE stream error',
+        );
         _handleStreamError(agentMsgId, 'Stream error: $error');
       },
       onDone: () {
@@ -349,12 +354,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isEmpty || _isLoading) return;
 
     setState(() {
-      _messages.add(ChatMessage(
-        id: '${_nextId++}',
-        text: text,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(
+          id: '${_nextId++}',
+          text: text,
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+      );
       _controller.clear();
       _isLoading = true;
       // Sending a message transitions from the compact summary to the
@@ -364,12 +371,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final agentMsgId = '${_nextId++}';
     setState(() {
-      _messages.add(ChatMessage(
-        id: agentMsgId,
-        text: '',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(
+          id: agentMsgId,
+          text: '',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
     });
     _scrollToBottom();
 
@@ -463,8 +472,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   )
                 : _showSummary
-                    ? _buildSummaryCard()
-                    : _buildTranscriptList(),
+                ? _buildSummaryCard()
+                : _buildTranscriptList(),
           ),
           // Input bar
           SafeArea(
@@ -675,104 +684,103 @@ class _ChatScreenState extends State<ChatScreen> {
               child: _sessionsLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _sessionsError != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Failed to load sessions',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _sessionsError!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton(
-                                  onPressed: _loadSessions,
-                                  child: const Text('Retry'),
-                                ),
-                              ],
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Failed to load sessions',
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
-                          ),
-                        )
-                      : _sessions.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('No sessions yet.'),
-                                  const SizedBox(height: 12),
-                                  FilledButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      _createSession();
-                                    },
-                                    icon: const Icon(Icons.add),
-                                    label: const Text('Create one'),
-                                  ),
-                                ],
+                            const SizedBox(height: 8),
+                            Text(
+                              _sessionsError!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 13,
                               ),
-                            )
-                          : ListView.builder(
-                              itemCount: _sessions.length,
-                              itemBuilder: (context, index) {
-                                final session = _sessions[index];
-                                final isActive =
-                                    session.sessionId == _sessionId;
-                                return ListTile(
-                                  selected: isActive,
-                                  leading: Icon(
-                                    isActive
-                                        ? Icons.chat_bubble
-                                        : Icons.chat_bubble_outline,
-                                  ),
-                                  title: Text(
-                                    session.title ??
-                                        '${session.sessionId.length > 16 ? session.sessionId.substring(0, 16) : session.sessionId}...',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  subtitle: session.turnCount != null
-                                      ? Text('${session.turnCount} turns')
-                                      : null,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    if (!isActive) {
-                                      _switchToSession(session.sessionId);
-                                    }
-                                  },
-                                  trailing: PopupMenuButton<String>(
-                                    onSelected: (action) {
-                                      if (action == 'delete') {
-                                        _deleteSession(session.sessionId);
-                                      } else if (action == 'close') {
-                                        _closeSession(session.sessionId);
-                                      }
-                                    },
-                                    itemBuilder: (_) => [
-                                      const PopupMenuItem(
-                                        value: 'close',
-                                        child: Text('Close'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text(
-                                          'Delete',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
                             ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: _loadSessions,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _sessions.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('No sessions yet.'),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _createSession();
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create one'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _sessions.length,
+                      itemBuilder: (context, index) {
+                        final session = _sessions[index];
+                        final isActive = session.sessionId == _sessionId;
+                        return ListTile(
+                          selected: isActive,
+                          leading: Icon(
+                            isActive
+                                ? Icons.chat_bubble
+                                : Icons.chat_bubble_outline,
+                          ),
+                          title: Text(
+                            session.title ??
+                                '${session.sessionId.length > 16 ? session.sessionId.substring(0, 16) : session.sessionId}...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: session.turnCount != null
+                              ? Text('${session.turnCount} turns')
+                              : null,
+                          onTap: () {
+                            Navigator.pop(context);
+                            if (!isActive) {
+                              _switchToSession(session.sessionId);
+                            }
+                          },
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (action) {
+                              if (action == 'delete') {
+                                _deleteSession(session.sessionId);
+                              } else if (action == 'close') {
+                                _closeSession(session.sessionId);
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                value: 'close',
+                                child: Text('Close'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
