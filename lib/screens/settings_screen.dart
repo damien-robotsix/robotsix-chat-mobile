@@ -22,7 +22,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _urlController = TextEditingController(text: 'https://chat.example.com');
+  final _urlController = TextEditingController(
+    text: 'https://chat.example.com',
+  );
   bool _isLoggedIn = false;
   StreamSubscription<bool>? _authSub;
 
@@ -60,9 +62,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _save() async {
     await ApiService.saveBaseUrl(_urlController.text.trim());
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Settings saved')));
     Navigator.pop(context);
   }
 
@@ -71,9 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (baseUrl.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter a Backend Base URL first.'),
-        ),
+        const SnackBar(content: Text('Enter a Backend Base URL first.')),
       );
       return;
     }
@@ -81,9 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await OidcTokenExchangeAuthProvider.startSsoLogin(baseUrl);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open the login page.'),
-        ),
+        const SnackBar(content: Text('Could not open the login page.')),
       );
     }
   }
@@ -109,9 +106,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true) return;
     await OidcTokenExchangeAuthProvider.clearSubjectToken();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logged out.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Logged out.')));
   }
 
   Future<void> _checkForUpdate() async {
@@ -123,9 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           showUpdateDialog(context, result);
         case UpdateStatus.upToDate:
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Up to date (v${result.currentVersion})'),
-            ),
+            SnackBar(content: Text('Up to date (v${result.currentVersion})')),
           );
         case UpdateStatus.error:
           ScaffoldMessenger.of(context).showSnackBar(
@@ -136,9 +130,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } on Exception {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Update check failed')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Update check failed')));
     }
   }
 
@@ -174,7 +167,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       children: [
                         Icon(
-                          _isLoggedIn ? Icons.check_circle : Icons.error_outline,
+                          _isLoggedIn
+                              ? Icons.check_circle
+                              : Icons.error_outline,
                           color: _isLoggedIn
                               ? Colors.green.shade700
                               : theme.colorScheme.error,

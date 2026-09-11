@@ -34,27 +34,22 @@ class UpdateCheckResult {
     this.errorMessage,
   });
 
-  factory UpdateCheckResult.upToDate(String current) => UpdateCheckResult(
-        status: UpdateStatus.upToDate,
-        currentVersion: current,
-      );
+  factory UpdateCheckResult.upToDate(String current) =>
+      UpdateCheckResult(status: UpdateStatus.upToDate, currentVersion: current);
 
   factory UpdateCheckResult.available({
     required String current,
     required String latest,
     required String downloadUrl,
-  }) =>
-      UpdateCheckResult(
-        status: UpdateStatus.updateAvailable,
-        currentVersion: current,
-        latestVersion: latest,
-        apkDownloadUrl: downloadUrl,
-      );
+  }) => UpdateCheckResult(
+    status: UpdateStatus.updateAvailable,
+    currentVersion: current,
+    latestVersion: latest,
+    apkDownloadUrl: downloadUrl,
+  );
 
-  factory UpdateCheckResult.error(String msg) => UpdateCheckResult(
-        status: UpdateStatus.error,
-        errorMessage: msg,
-      );
+  factory UpdateCheckResult.error(String msg) =>
+      UpdateCheckResult(status: UpdateStatus.error, errorMessage: msg);
 }
 
 /// The kind of failure that occurred while downloading or installing an
@@ -107,8 +102,7 @@ class UpdateService {
   /// The optional [client] parameter allows injecting a custom
   /// [http.Client] for testing.  When omitted the default
   /// [http.Client] is used.
-  UpdateService({http.Client? client})
-      : _client = client ?? http.Client();
+  UpdateService({http.Client? client}) : _client = client ?? http.Client();
 
   /// Check GitHub Releases for a newer version than [currentVersion].
   ///
@@ -267,8 +261,9 @@ class UpdateService {
     try {
       final aParts = a.split('.').map(int.parse).toList();
       final bParts = b.split('.').map(int.parse).toList();
-      final maxParts =
-          aParts.length > bParts.length ? aParts.length : bParts.length;
+      final maxParts = aParts.length > bParts.length
+          ? aParts.length
+          : bParts.length;
       for (var i = 0; i < maxParts; i++) {
         final av = i < aParts.length ? aParts[i] : 0;
         final bv = i < bParts.length ? bParts[i] : 0;
