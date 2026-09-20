@@ -11,6 +11,11 @@ import '../services/api_service.dart';
 import '../services/auth_provider.dart';
 import '../services/observability.dart';
 import '../services/update_service.dart';
+import '../widgets/chat_input_bar.dart';
+import '../widgets/chat_message_bubble.dart';
+import '../widgets/session_bar.dart';
+import '../widgets/session_drawer.dart';
+import '../widgets/summary_card.dart';
 
 /// Chat screen backed by [ApiService] with SSE streaming and
 /// session management.
@@ -448,11 +453,24 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-      drawer: _buildSessionDrawer(),
+      drawer: SessionDrawer(
+        loading: _sessionsLoading,
+        error: _sessionsError,
+        sessions: _sessions,
+        activeSessionId: _sessionId,
+        onRetry: _loadSessions,
+        onCreateSession: _createSession,
+        onSwitchSession: _switchToSession,
+        onCloseSession: _closeSession,
+        onDeleteSession: _deleteSession,
+      ),
       body: Column(
         children: [
           // Session indicator bar
-          _buildSessionBar(),
+          SessionBar(
+            sessionId: _sessionId,
+            onNewSession: _createSession,
+          ),
           Expanded(
             child: _messages.isEmpty
                 ? const Center(
@@ -463,98 +481,23 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   )
                 : _showSummary
-                    ? _buildSummaryCard()
+                    ? SummaryCard(
+                        title: _sessionTitle(),
+                        messageCount: _messages.length,
+                        lastMessageText: _messages.isNotEmpty
+                            ? _messages.last.text
+                            : null,
+                        onExpand: _expandTranscript,
+                      )
                     : _buildTranscriptList(),
           ),
           // Input bar
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: const InputDecoration(
-                        hintText: 'Type a message...',
-                        border: OutlineInputBorder(),
-                      ),
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _isLoading ? null : _sendMessage,
-                  ),
-                ],
-              ),
-            ),
+          ChatInputBar(
+            controller: _controller,
+            isLoading: _isLoading,
+            onSend: _sendMessage,
           ),
         ],
-      ),
-    );
-  }
-
-  /// Compact summary card shown by default when a conversation has messages.
-  /// Tapping it (or its button) expands to the full transcript.
-  Widget _buildSummaryCard() {
-    final lastMessage = _messages.isNotEmpty ? _messages.last : null;
-    return Center(
-      child: SingleChildScrollView(
-        child: Card(
-          margin: const EdgeInsets.all(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: _expandTranscript,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.article_outlined),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _sessionTitle(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      const Icon(Icons.expand_more),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${_messages.length} message${_messages.length == 1 ? '' : 's'}',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  if (lastMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      lastMessage.text,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: _expandTranscript,
-                      icon: const Icon(Icons.unfold_more),
-                      label: const Text('Show full transcript'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -566,24 +509,7 @@ class _ChatScreenState extends State<ChatScreen> {
       controller: _scrollController,
       itemCount: _messages.length,
       itemBuilder: (context, index) {
-        final msg = _messages[index];
-        return ListTile(
-          title: Align(
-            alignment: msg.isUser
-                ? Alignment.centerRight
-                : Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: msg.isUser
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(msg.text),
-            ),
-          ),
-        );
+        return ChatMessageBubble(message: _messages[index]);
       },
     );
   }
@@ -612,171 +538,5 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
     return 'Conversation';
-  }
-
-  Widget _buildSessionBar() {
-    final label = _sessionId != null
-        ? 'Session: ${_sessionId!.length > 12 ? _sessionId!.substring(0, 12) : _sessionId}...'
-        : 'No session';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Row(
-        children: [
-          Icon(
-            _sessionId != null ? Icons.chat_bubble : Icons.chat_bubble_outline,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'New session',
-            onPressed: _createSession,
-            iconSize: 20,
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSessionDrawer() {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Row(
-                children: [
-                  const Icon(Icons.history),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Sessions',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    tooltip: 'New session',
-                    onPressed: () {
-                      Navigator.pop(context); // close drawer
-                      _createSession();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _sessionsLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _sessionsError != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Failed to load sessions',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _sessionsError!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton(
-                                  onPressed: _loadSessions,
-                                  child: const Text('Retry'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : _sessions.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('No sessions yet.'),
-                                  const SizedBox(height: 12),
-                                  FilledButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      _createSession();
-                                    },
-                                    icon: const Icon(Icons.add),
-                                    label: const Text('Create one'),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: _sessions.length,
-                              itemBuilder: (context, index) {
-                                final session = _sessions[index];
-                                final isActive =
-                                    session.sessionId == _sessionId;
-                                return ListTile(
-                                  selected: isActive,
-                                  leading: Icon(
-                                    isActive
-                                        ? Icons.chat_bubble
-                                        : Icons.chat_bubble_outline,
-                                  ),
-                                  title: Text(
-                                    session.title ??
-                                        '${session.sessionId.length > 16 ? session.sessionId.substring(0, 16) : session.sessionId}...',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  subtitle: session.turnCount != null
-                                      ? Text('${session.turnCount} turns')
-                                      : null,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    if (!isActive) {
-                                      _switchToSession(session.sessionId);
-                                    }
-                                  },
-                                  trailing: PopupMenuButton<String>(
-                                    onSelected: (action) {
-                                      if (action == 'delete') {
-                                        _deleteSession(session.sessionId);
-                                      } else if (action == 'close') {
-                                        _closeSession(session.sessionId);
-                                      }
-                                    },
-                                    itemBuilder: (_) => [
-                                      const PopupMenuItem(
-                                        value: 'close',
-                                        child: Text('Close'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text(
-                                          'Delete',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
