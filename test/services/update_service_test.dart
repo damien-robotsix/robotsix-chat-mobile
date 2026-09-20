@@ -134,8 +134,9 @@ void main() {
         assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -151,8 +152,9 @@ void main() {
         assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -166,8 +168,9 @@ void main() {
         assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -175,8 +178,9 @@ void main() {
     });
 
     test('returns error on non-200 response', () async {
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response('Not Found', 404));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response('Not Found', 404));
 
       final result = await service.checkForUpdate();
 
@@ -185,8 +189,9 @@ void main() {
     });
 
     test('returns error on 500 response', () async {
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response('Server Error', 500));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response('Server Error', 500));
 
       final result = await service.checkForUpdate();
 
@@ -195,8 +200,9 @@ void main() {
     });
 
     test('returns error on SocketException', () async {
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenThrow(const SocketException('No connection'));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenThrow(const SocketException('No connection'));
 
       final result = await service.checkForUpdate();
 
@@ -205,8 +211,9 @@ void main() {
     });
 
     test('returns error on ClientException', () async {
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenThrow(http.ClientException('Connection failed'));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenThrow(http.ClientException('Connection failed'));
 
       final result = await service.checkForUpdate();
 
@@ -225,8 +232,9 @@ void main() {
         ],
       );
 
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -235,8 +243,9 @@ void main() {
     });
 
     test('returns error on malformed JSON', () async {
-      when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response('not json', 200));
+      when(
+        () => mockClient.get(any(), headers: any(named: 'headers')),
+      ).thenAnswer((_) async => http.Response('not json', 200));
 
       final result = await service.checkForUpdate();
 
@@ -292,8 +301,9 @@ void main() {
             },
           );
 
-      when(() => mockClient.get(any()))
-          .thenAnswer((_) async => http.Response.bytes(apkData, 200));
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
       await service.downloadAndInstall('https://example.com/update.apk');
 
@@ -306,8 +316,9 @@ void main() {
     });
 
     test('throws downloadFailed on non-200 response', () async {
-      when(() => mockClient.get(any()))
-          .thenAnswer((_) async => http.Response('Forbidden', 403));
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer((_) async => http.Response('Forbidden', 403));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),
@@ -322,8 +333,9 @@ void main() {
     });
 
     test('throws downloadFailed on SocketException', () async {
-      when(() => mockClient.get(any()))
-          .thenThrow(const SocketException('No connection'));
+      when(
+        () => mockClient.get(any()),
+      ).thenThrow(const SocketException('No connection'));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),
@@ -351,8 +363,9 @@ void main() {
               },
             );
 
-        when(() => mockClient.get(any()))
-            .thenAnswer((_) async => http.Response.bytes(apkData, 200));
+        when(
+          () => mockClient.get(any()),
+        ).thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
         await expectLater(
           service.downloadAndInstall('https://example.com/update.apk'),
@@ -379,8 +392,9 @@ void main() {
             },
           );
 
-      when(() => mockClient.get(any()))
-          .thenAnswer((_) async => http.Response.bytes(apkData, 200));
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),
@@ -404,8 +418,9 @@ void main() {
             null,
           );
 
-      when(() => mockClient.get(any()))
-          .thenAnswer((_) async => http.Response.bytes(apkData, 200));
+      when(
+        () => mockClient.get(any()),
+      ).thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),

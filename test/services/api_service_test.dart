@@ -67,8 +67,9 @@ void main() {
       mockClient = MockClient();
       mockAuth = MockAuthProvider();
       registerFallbackValue(http.Request('POST', Uri()));
-      when(() => mockAuth.requestHeaders())
-          .thenAnswer((_) async => <String, String>{});
+      when(
+        () => mockAuth.requestHeaders(),
+      ).thenAnswer((_) async => <String, String>{});
       SharedPreferences.setMockInitialValues(<String, Object>{});
       FlutterSecureStorage.setMockInitialValues({});
     });
@@ -131,9 +132,9 @@ void main() {
       await buildService().sendMessage(message: 'first').toList();
 
       final captured = verify(() => mockClient.send(captureAny())).captured;
-      final decoded = jsonDecode(
-        (captured.single as http.Request).body,
-      ) as Map<String, dynamic>;
+      final decoded =
+          jsonDecode((captured.single as http.Request).body)
+              as Map<String, dynamic>;
       expect(decoded.containsKey('session_id'), isFalse);
       expect(decoded.containsKey('message_id'), isFalse);
     });
@@ -152,8 +153,9 @@ void main() {
     });
 
     test('throws AuthException on a 403 response', () async {
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async => _sseResponse('forbidden', statusCode: 403));
+      when(
+        () => mockClient.send(any()),
+      ).thenAnswer((_) async => _sseResponse('forbidden', statusCode: 403));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
@@ -164,8 +166,9 @@ void main() {
     });
 
     test('throws ApiException on a 500 response', () async {
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async => _sseResponse('boom', statusCode: 500));
+      when(
+        () => mockClient.send(any()),
+      ).thenAnswer((_) async => _sseResponse('boom', statusCode: 500));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
@@ -178,8 +181,9 @@ void main() {
     });
 
     test('propagates a network error raised while sending', () async {
-      when(() => mockClient.send(any()))
-          .thenThrow(http.ClientException('connection refused'));
+      when(
+        () => mockClient.send(any()),
+      ).thenThrow(http.ClientException('connection refused'));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
@@ -227,8 +231,9 @@ void main() {
         throw http.ClientException('dropped');
       }
 
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async => http.StreamedResponse(failing(), 200));
+      when(
+        () => mockClient.send(any()),
+      ).thenAnswer((_) async => http.StreamedResponse(failing(), 200));
 
       expect(
         () => buildService().sendMessage(message: 'hi').toList(),
@@ -662,8 +667,9 @@ void main() {
       mockClient = MockClient();
       mockAuthProvider = MockAuthProvider();
       registerFallbackValue(Uri());
-      when(() => mockAuthProvider.requestHeaders())
-          .thenAnswer((_) async => {'Authorization': 'Bearer test-token'});
+      when(
+        () => mockAuthProvider.requestHeaders(),
+      ).thenAnswer((_) async => {'Authorization': 'Bearer test-token'});
       apiService = ApiService(
         baseUrl: 'https://chat.example.com',
         authProvider: mockAuthProvider,
@@ -675,19 +681,20 @@ void main() {
 
     group('listSessions', () {
       test('returns parsed session list on 200', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async {
-              return http.Response(
-                jsonEncode({
-                  'sessions': [
-                    {'session_id': 's1', 'title': 'First', 'turn_count': 5},
-                    {'session_id': 's2', 'title': 'Second', 'turn_count': 0},
-                  ],
-                  'active_session_id': 's1',
-                }),
-                200,
-              );
-            });
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async {
+          return http.Response(
+            jsonEncode({
+              'sessions': [
+                {'session_id': 's1', 'title': 'First', 'turn_count': 5},
+                {'session_id': 's2', 'title': 'Second', 'turn_count': 0},
+              ],
+              'active_session_id': 's1',
+            }),
+            200,
+          );
+        });
 
         final sessions = await apiService.listSessions();
 
@@ -766,8 +773,9 @@ void main() {
       });
 
       test('throws AuthException on 401', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('unauthorized', 401));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('unauthorized', 401));
 
         await expectLater(
           apiService.listSessions(),
@@ -788,8 +796,9 @@ void main() {
             ),
             client: mockClient,
           );
-          when(() => mockClient.get(any(), headers: any(named: 'headers')))
-              .thenAnswer((_) async => http.Response('unauthorized', 401));
+          when(
+            () => mockClient.get(any(), headers: any(named: 'headers')),
+          ).thenAnswer((_) async => http.Response('unauthorized', 401));
 
           await expectLater(
             staleService.listSessions(),
@@ -827,8 +836,9 @@ void main() {
           ),
           client: mockClient,
         );
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('unauthorized', 401));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('unauthorized', 401));
 
         await expectLater(
           authedService.listSessions(),
@@ -838,8 +848,9 @@ void main() {
       });
 
       test('throws ApiException on non-200', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('server error', 500));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('server error', 500));
 
         await expectLater(
           apiService.listSessions(),
@@ -910,16 +921,18 @@ void main() {
 
     group('deleteSession', () {
       test('completes on 200', () async {
-        when(() => mockClient.delete(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('', 200));
+        when(
+          () => mockClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('', 200));
 
         await apiService.deleteSession('s1');
         // No exception means success.
       });
 
       test('throws ApiException on non-200', () async {
-        when(() => mockClient.delete(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('gone', 410));
+        when(
+          () => mockClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('gone', 410));
 
         await expectLater(
           apiService.deleteSession('s1'),
@@ -928,8 +941,9 @@ void main() {
       });
 
       test('throws AuthException on 401', () async {
-        when(() => mockClient.delete(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('unauthorized', 401));
+        when(
+          () => mockClient.delete(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('unauthorized', 401));
 
         await expectLater(
           apiService.deleteSession('s1'),
@@ -988,18 +1002,19 @@ void main() {
 
     group('getHistory', () {
       test('parses the turns field of the {"turns": [...]} response', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async {
-              return http.Response(
-                jsonEncode({
-                  'turns': [
-                    {'role': 'user', 'content': 'hello'},
-                    {'role': 'assistant', 'content': 'hi there'},
-                  ],
-                }),
-                200,
-              );
-            });
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async {
+          return http.Response(
+            jsonEncode({
+              'turns': [
+                {'role': 'user', 'content': 'hello'},
+                {'role': 'assistant', 'content': 'hi there'},
+              ],
+            }),
+            200,
+          );
+        });
 
         final history = await apiService.getHistory('s1');
 
@@ -1009,8 +1024,9 @@ void main() {
       });
 
       test('returns an empty list when turns is absent', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response(jsonEncode({}), 200));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response(jsonEncode({}), 200));
 
         final history = await apiService.getHistory('s1');
 
@@ -1018,15 +1034,17 @@ void main() {
       });
 
       test('throws ApiException on non-200', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('not found', 404));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('not found', 404));
 
         expect(apiService.getHistory('s1'), throwsA(isA<ApiException>()));
       });
 
       test('throws AuthException on 401', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('unauthorized', 401));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('unauthorized', 401));
 
         expect(apiService.getHistory('s1'), throwsA(isA<AuthException>()));
       });

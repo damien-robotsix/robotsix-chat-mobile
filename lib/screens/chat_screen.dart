@@ -129,8 +129,9 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -213,8 +214,9 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -233,8 +235,9 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {

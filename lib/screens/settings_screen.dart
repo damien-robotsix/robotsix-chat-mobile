@@ -62,8 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _save() async {
     await ApiService.saveBaseUrl(_urlController.text.trim());
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Settings saved')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Settings saved')));
     Navigator.pop(context);
   }
 
@@ -106,8 +107,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true) return;
     await OidcTokenExchangeAuthProvider.clearSubjectToken();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Logged out.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Logged out.')));
   }
 
   Future<void> _checkForUpdate() async {
@@ -130,8 +132,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } on Exception {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Update check failed')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Update check failed')));
     }
   }
 

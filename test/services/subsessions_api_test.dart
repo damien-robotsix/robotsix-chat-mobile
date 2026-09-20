@@ -28,8 +28,9 @@ void main() {
       mockClient = MockClient();
       mockAuth = MockAuthProvider();
       registerFallbackValue(Uri());
-      when(() => mockAuth.requestHeaders())
-          .thenAnswer((_) async => {'Authorization': 'Bearer test-token'});
+      when(
+        () => mockAuth.requestHeaders(),
+      ).thenAnswer((_) async => {'Authorization': 'Bearer test-token'});
       apiService = ApiService(
         baseUrl: 'https://chat.example.com',
         authProvider: mockAuth,
@@ -41,25 +42,26 @@ void main() {
       test(
         'requests /subsessions with session_id and parses the list',
         () async {
-          when(() => mockClient.get(any(), headers: any(named: 'headers')))
-              .thenAnswer((_) async {
-                return http.Response(
-                  jsonEncode({
-                    'subsessions': [
-                      {
-                        'subsession_id': 'sub-1',
-                        'kind': 'periodic',
-                        'owner_session_id': 'sess-1',
-                        'title': 'Monitor: deploy',
-                        'status': 'sleeping',
-                        'runs': 3,
-                        'max_runs': 100,
-                      },
-                    ],
-                  }),
-                  200,
-                );
-              });
+          when(
+            () => mockClient.get(any(), headers: any(named: 'headers')),
+          ).thenAnswer((_) async {
+            return http.Response(
+              jsonEncode({
+                'subsessions': [
+                  {
+                    'subsession_id': 'sub-1',
+                    'kind': 'periodic',
+                    'owner_session_id': 'sess-1',
+                    'title': 'Monitor: deploy',
+                    'status': 'sleeping',
+                    'runs': 3,
+                    'max_runs': 100,
+                  },
+                ],
+              }),
+              200,
+            );
+          });
 
           final subs = await apiService.listSubsessions('sess-1');
 
@@ -81,8 +83,9 @@ void main() {
       test(
         'returns an empty list when the subsessions key is missing',
         () async {
-          when(() => mockClient.get(any(), headers: any(named: 'headers')))
-              .thenAnswer((_) async => http.Response('{}', 200));
+          when(
+            () => mockClient.get(any(), headers: any(named: 'headers')),
+          ).thenAnswer((_) async => http.Response('{}', 200));
 
           final subs = await apiService.listSubsessions('sess-1');
 
@@ -91,8 +94,9 @@ void main() {
       );
 
       test('throws AuthException on 401', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('unauthorized', 401));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('unauthorized', 401));
 
         await expectLater(
           apiService.listSubsessions('sess-1'),
@@ -101,8 +105,9 @@ void main() {
       });
 
       test('throws ApiException on non-200', () async {
-        when(() => mockClient.get(any(), headers: any(named: 'headers')))
-            .thenAnswer((_) async => http.Response('boom', 500));
+        when(
+          () => mockClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('boom', 500));
 
         await expectLater(
           apiService.listSubsessions('sess-1'),
