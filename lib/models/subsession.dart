@@ -9,16 +9,11 @@ class Subsession {
   final String subsessionId;
   final String kind;
   final String ownerSessionId;
-  final String? parentId;
-  final int? depth;
   final String title;
-  final String? prompt;
   final int? modelLevel;
   final String status;
-  final num? createdAt;
   final num? lastActivityAt;
   final num? intervalSeconds;
-  final String? anchorTime;
   final num? nextRunAt;
   final int? runs;
   final int? maxRuns;
@@ -31,16 +26,11 @@ class Subsession {
     required this.subsessionId,
     this.kind = 'task',
     this.ownerSessionId = '',
-    this.parentId,
-    this.depth,
     this.title = '',
-    this.prompt,
     this.modelLevel,
     this.status = 'unknown',
-    this.createdAt,
     this.lastActivityAt,
     this.intervalSeconds,
-    this.anchorTime,
     this.nextRunAt,
     this.runs,
     this.maxRuns,
@@ -55,16 +45,11 @@ class Subsession {
       subsessionId: json['subsession_id'] as String,
       kind: json['kind'] as String? ?? 'task',
       ownerSessionId: json['owner_session_id'] as String? ?? '',
-      parentId: json['parent_id'] as String?,
-      depth: json['depth'] as int?,
       title: json['title'] as String? ?? '',
-      prompt: json['prompt'] as String?,
       modelLevel: json['model_level'] as int?,
       status: json['status'] as String? ?? 'unknown',
-      createdAt: json['created_at'] as num?,
       lastActivityAt: json['last_activity_at'] as num?,
       intervalSeconds: json['interval_seconds'] as num?,
-      anchorTime: json['anchor_time'] as String?,
       nextRunAt: json['next_run_at'] as num?,
       runs: json['runs'] as int?,
       maxRuns: json['max_runs'] as int?,

@@ -9,16 +9,11 @@ void main() {
         'subsession_id': 'sub-1',
         'kind': 'periodic',
         'owner_session_id': 'sess-1',
-        'parent_id': null,
-        'depth': 1,
         'title': 'Monitor: deploy',
-        'prompt': 'watch the deploy',
         'model_level': 1,
         'status': 'sleeping',
-        'created_at': 1.5,
         'last_activity_at': 2.5,
         'interval_seconds': 3600.0,
-        'anchor_time': null,
         'next_run_at': 3.5,
         'runs': 7,
         'max_runs': 100,
@@ -31,13 +26,9 @@ void main() {
       expect(sub.subsessionId, 'sub-1');
       expect(sub.kind, 'periodic');
       expect(sub.ownerSessionId, 'sess-1');
-      expect(sub.parentId, isNull);
-      expect(sub.depth, 1);
       expect(sub.title, 'Monitor: deploy');
-      expect(sub.prompt, 'watch the deploy');
       expect(sub.modelLevel, 1);
       expect(sub.status, 'sleeping');
-      expect(sub.createdAt, 1.5);
       expect(sub.lastActivityAt, 2.5);
       expect(sub.intervalSeconds, 3600.0);
       expect(sub.nextRunAt, 3.5);
