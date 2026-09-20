@@ -66,73 +66,70 @@ class SessionDrawer extends StatelessWidget {
               child: loading
                   ? const Center(child: CircularProgressIndicator())
                   : error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Failed to load sessions',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  error!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton(
-                                  onPressed: onRetry,
-                                  child: const Text('Retry'),
-                                ),
-                              ],
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Failed to load sessions',
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
-                          ),
-                        )
-                      : sessions.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('No sessions yet.'),
-                                  const SizedBox(height: 12),
-                                  FilledButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      onCreateSession();
-                                    },
-                                    icon: const Icon(Icons.add),
-                                    label: const Text('Create one'),
-                                  ),
-                                ],
+                            const SizedBox(height: 8),
+                            Text(
+                              error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 13,
                               ),
-                            )
-                          : ListView.builder(
-                              itemCount: sessions.length,
-                              itemBuilder: (context, index) {
-                                final session = sessions[index];
-                                final isActive =
-                                    session.sessionId == activeSessionId;
-                                return SessionTile(
-                                  session: session,
-                                  isActive: isActive,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    if (!isActive) {
-                                      onSwitchSession(session.sessionId);
-                                    }
-                                  },
-                                  onClose: () =>
-                                      onCloseSession(session.sessionId),
-                                  onDelete: () =>
-                                      onDeleteSession(session.sessionId),
-                                );
-                              },
                             ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: onRetry,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : sessions.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('No sessions yet.'),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              onCreateSession();
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create one'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: sessions.length,
+                      itemBuilder: (context, index) {
+                        final session = sessions[index];
+                        final isActive = session.sessionId == activeSessionId;
+                        return SessionTile(
+                          session: session,
+                          isActive: isActive,
+                          onTap: () {
+                            Navigator.pop(context);
+                            if (!isActive) {
+                              onSwitchSession(session.sessionId);
+                            }
+                          },
+                          onClose: () => onCloseSession(session.sessionId),
+                          onDelete: () => onDeleteSession(session.sessionId),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

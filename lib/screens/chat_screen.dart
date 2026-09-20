@@ -522,10 +522,7 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           // Session indicator bar
-          SessionBar(
-            sessionId: _sessionId,
-            onNewSession: _createSession,
-          ),
+          SessionBar(sessionId: _sessionId, onNewSession: _createSession),
           Expanded(
             child: _messages.isEmpty
                 ? const Center(
