@@ -9,6 +9,7 @@ import '../models/chat_message.dart';
 import '../models/chat_session.dart';
 import '../services/api_service.dart';
 import '../services/auth_provider.dart';
+import '../services/http_retry_wrapper.dart';
 import '../services/observability.dart';
 import '../services/update_service.dart';
 import '../widgets/chat_input_bar.dart';
@@ -333,13 +334,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   StreamSubscription<ChatEvent> _subscribeToStream(
-      Stream<ChatEvent> stream, String agentMsgId) {
+      Stream<ChatEvent> stream, String agentMsgId, String originalText) {
     return stream.listen(
       (event) => _onStreamEvent(event, agentMsgId),
       onError: (Object error, StackTrace stackTrace) {
         Observability.recordError(error, stackTrace,
             reason: 'SSE stream error');
-        _handleStreamError(agentMsgId, 'Stream error: $error');
+        // Classify so transient failures offer a "Retry" action.
+        _handleSendFailure(agentMsgId, error, originalText);
       },
       onDone: () {
         if (!mounted) return;
@@ -387,17 +389,60 @@ class _ChatScreenState extends State<ChatScreen> {
         messageId: agentMsgId,
       );
 
-      _activeStream = _subscribeToStream(stream, agentMsgId);
+      _activeStream = _subscribeToStream(stream, agentMsgId, text);
     } on AuthException catch (e) {
+      // Fatal: credentials are gone — steer the user to Settings.
       _handleStreamError(agentMsgId, e.message);
       _showReLoginPrompt();
-    } on ApiException catch (e) {
-      _handleStreamError(agentMsgId, 'Server error: ${e.toString()}');
     } on StateError catch (e) {
+      // Fatal: the client is not configured yet.
       _handleStreamError(agentMsgId, e.message);
     } catch (e) {
-      _handleStreamError(agentMsgId, 'Network error: $e');
+      // Everything else is classified: transient failures offer a
+      // "Retry" action, fatal ones show a clear, non-actionable message.
+      _handleSendFailure(agentMsgId, e, text);
     }
+  }
+
+  /// Present a failed send according to whether [error] is transient.
+  ///
+  /// Transient (network/5xx) failures — already retried with backoff by
+  /// [withRetry] — surface a "Retry" action so the user can resend the
+  /// same message.  Fatal failures show a plain, non-retriable message.
+  void _handleSendFailure(String agentMsgId, Object error, String originalText) {
+    // Auth failures are fatal and actionable: send the user to Settings
+    // to re-authenticate rather than offering a pointless retry.
+    if (error is AuthException) {
+      _handleStreamError(agentMsgId, error.message);
+      _showReLoginPrompt();
+      return;
+    }
+
+    final transient = isTransientError(error);
+    final message = transient
+        ? 'Network error. Check your connection and try again.'
+        : 'Server error: $error';
+    _handleStreamError(agentMsgId, message);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: transient
+            ? SnackBarAction(
+                label: 'Retry',
+                onPressed: () => _resend(originalText),
+              )
+            : null,
+      ),
+    );
+  }
+
+  /// Re-send a previously failed message [text].
+  void _resend(String text) {
+    if (_isLoading) return;
+    _controller.text = text;
+    _sendMessage();
   }
 
   void _appendToMessage(String id, String text) {

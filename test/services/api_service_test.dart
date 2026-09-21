@@ -195,6 +195,40 @@ void main() {
       );
     });
 
+    test('retries a transient send failure then streams events', () async {
+      var calls = 0;
+      when(() => mockClient.send(any())).thenAnswer((_) async {
+        calls++;
+        if (calls < 3) throw http.ClientException('connection reset');
+        return _sseResponse(
+          _frame({'type': 'token', 'content': 'hi'}) +
+              _frame({'type': 'done', 'session_id': 's1', 'timestamp': 1}),
+        );
+      });
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect(calls, 3);
+      expect(events.whereType<TokenEvent>().single.content, 'hi');
+      expect(events.whereType<DoneEvent>().single.sessionId, 's1');
+    });
+
+    test('retries a transient 500 then streams events', () async {
+      var calls = 0;
+      when(() => mockClient.send(any())).thenAnswer((_) async {
+        calls++;
+        if (calls < 2) return _sseResponse('boom', statusCode: 500);
+        return _sseResponse(
+          _frame({'type': 'done', 'session_id': 's2', 'timestamp': 1}),
+        );
+      });
+
+      final events = await buildService().sendMessage(message: 'hi').toList();
+
+      expect(calls, 2);
+      expect(events.whereType<DoneEvent>().single.sessionId, 's2');
+    });
+
     test('propagates a network error raised mid-stream', () async {
       Stream<List<int>> failing() async* {
         yield utf8.encode(_frame({'type': 'token', 'content': 'x'}));
@@ -690,6 +724,61 @@ void main() {
         final sessions = await apiService.listSessions();
 
         expect(sessions, isEmpty);
+      });
+
+      test('retries a transient 500 then returns the session list',
+          () async {
+        var calls = 0;
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async {
+          calls++;
+          if (calls < 3) return http.Response('boom', 500);
+          return http.Response(
+            jsonEncode({
+              'sessions': [
+                {'session_id': 's1', 'title': 'First', 'turn_count': 1},
+              ],
+            }),
+            200,
+          );
+        });
+
+        final sessions = await apiService.listSessions();
+
+        expect(calls, 3);
+        expect(sessions, hasLength(1));
+        expect(sessions[0].sessionId, 's1');
+      });
+
+      test('retries a transient network error then returns the list',
+          () async {
+        var calls = 0;
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async {
+          calls++;
+          if (calls < 2) throw http.ClientException('connection reset');
+          return http.Response(jsonEncode({'sessions': []}), 200);
+        });
+
+        final sessions = await apiService.listSessions();
+
+        expect(calls, 2);
+        expect(sessions, isEmpty);
+      });
+
+      test('does not retry a fatal 401', () async {
+        var calls = 0;
+        when(() => mockClient.get(any(), headers: any(named: 'headers')))
+            .thenAnswer((_) async {
+          calls++;
+          return http.Response('unauthorized', 401);
+        });
+
+        await expectLater(
+          apiService.listSessions(),
+          throwsA(isA<AuthException>()),
+        );
+        expect(calls, 1);
       });
 
       test('throws AuthException on 401', () async {

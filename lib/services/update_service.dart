@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
+
+import 'http_retry_wrapper.dart';
 
 /// Result of an update check.
 enum UpdateStatus {
@@ -123,12 +126,16 @@ class UpdateService {
         'api.github.com',
         '/repos/$_repoOwner/$_repoName/releases/latest',
       );
-      final response = await _client.get(
-        uri,
-        headers: {
-          'Accept': 'application/vnd.github+json',
-          'User-Agent': 'robotsix-chat-mobile',
-        },
+      // Retry transient network failures with exponential backoff.
+      final response = await withRetry(
+        () => _client.get(
+          uri,
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'robotsix-chat-mobile',
+          },
+        ).timeout(kReadTimeout),
+        label: 'checkForUpdate',
       );
 
       if (response.statusCode != 200) {
@@ -165,6 +172,8 @@ class UpdateService {
       }
 
       return UpdateCheckResult.upToDate(current);
+    } on TimeoutException {
+      return UpdateCheckResult.error('Network timed out');
     } on SocketException {
       return UpdateCheckResult.error('Network unavailable');
     } on http.ClientException {
