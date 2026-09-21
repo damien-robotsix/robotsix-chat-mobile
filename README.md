@@ -97,6 +97,16 @@ Authentication uses the fleet SSO (tinyauth) flow:
 
 To log out, tap **Log out** in Settings.
 
+## Error Handling and Retry
+
+When a message fails to send, the app shows different messages depending on the error type:
+
+- **Network errors** — shows a **Retry** button so you can resend without re-typing.
+- **Auth errors** — prompts you to log in again via Settings.
+- **Server errors** — shows the error message.
+
+The app also retries transient failures automatically with exponential backoff before displaying errors to you.
+
 ## Installing the CI APK
 
 Every push and PR to `main` produces a debug APK via GitHub Actions. To install it:

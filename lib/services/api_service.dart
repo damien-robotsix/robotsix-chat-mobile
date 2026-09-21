@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_provider.dart';
+import 'http_retry_wrapper.dart';
 import 'observability.dart';
 import '../models/api_exception.dart';
 import '../models/chat_event.dart';
@@ -40,12 +41,23 @@ class ApiService {
   final AuthProvider _authProvider;
   final http.Client _client;
 
+  /// Timeout for establishing a connection / awaiting the initial SSE
+  /// response frame.
+  final Duration _connectionTimeout;
+
+  /// Timeout for reading a (non-streaming) response body.
+  final Duration _readTimeout;
+
   ApiService({
     required this.baseUrl,
     required AuthProvider authProvider,
     http.Client? client,
+    Duration connectionTimeout = kConnectionTimeout,
+    Duration readTimeout = kReadTimeout,
   })  : _authProvider = authProvider,
-        _client = client ?? http.Client();
+        _client = client ?? http.Client(),
+        _connectionTimeout = connectionTimeout,
+        _readTimeout = readTimeout;
 
   // ------------------------------------------------------------------
   // Persistent config helpers
@@ -189,11 +201,23 @@ class ApiService {
     if (sessionId != null) body['session_id'] = sessionId;
     if (messageId != null) body['message_id'] = messageId;
 
-    final request = http.Request('POST', uri);
-    request.headers.addAll(headers);
-    request.body = jsonEncode(body);
-
-    final response = await _client.send(request);
+    // Retry the connection handshake on transient failures.  A fresh
+    // [http.Request] is built per attempt because a request may only be
+    // sent once.  5xx responses are surfaced as a transient [ApiException]
+    // so the wrapper retries them; other statuses are handled below.
+    final response = await withRetry(
+      () async {
+        final request = http.Request('POST', uri);
+        request.headers.addAll(headers);
+        request.body = jsonEncode(body);
+        final resp = await _client.send(request).timeout(_connectionTimeout);
+        if (resp.statusCode >= 500) {
+          throw ApiException(resp.statusCode, await resp.stream.bytesToString());
+        }
+        return resp;
+      },
+      label: 'sendMessage',
+    );
 
     // Correlate any crash report for this request with the session it
     // belongs to.
@@ -284,17 +308,20 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/sessions?owner_id=$ownerId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await _client.get(uri, headers: headers);
-    await _checkResponse(response);
+    return withRetry(() async {
+      final response =
+          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      await _checkResponse(response);
 
-    // GET /sessions returns a Map ({"sessions": [...], "active_session_id": ...}),
-    // not a bare List. Cast to Map and read the "sessions" key; casting the
-    // response directly to List crashes the sessions page (see PR #62).
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = decoded['sessions'] as List<dynamic>? ?? const <dynamic>[];
-    return list
-        .map((e) => ChatSession.fromJson(e as Map<String, dynamic>))
-        .toList();
+      // GET /sessions returns a Map ({"sessions": [...], "active_session_id": ...}),
+      // not a bare List. Cast to Map and read the "sessions" key; casting the
+      // response directly to List crashes the sessions page (see PR #62).
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = decoded['sessions'] as List<dynamic>? ?? const <dynamic>[];
+      return list
+          .map((e) => ChatSession.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }, label: 'listSessions');
   }
 
   /// Create a new session.
@@ -306,15 +333,19 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final response = await _client.post(
-      uri,
-      headers: headers,
-      body: jsonEncode({'owner_id': ownerId}),
-    );
-    await _checkResponse(response);
+    return withRetry(() async {
+      final response = await _client
+          .post(
+            uri,
+            headers: headers,
+            body: jsonEncode({'owner_id': ownerId}),
+          )
+          .timeout(_readTimeout);
+      await _checkResponse(response);
 
-    return ChatSession.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>);
+      return ChatSession.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>);
+    }, label: 'createSession');
   }
 
   /// Delete a session.
@@ -323,8 +354,11 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/sessions/$sessionId?owner_id=$ownerId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await _client.delete(uri, headers: headers);
-    await _checkResponse(response);
+    await withRetry(() async {
+      final response =
+          await _client.delete(uri, headers: headers).timeout(_readTimeout);
+      await _checkResponse(response);
+    }, label: 'deleteSession');
   }
 
   /// Close a session.
@@ -336,12 +370,16 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final response = await _client.post(
-      uri,
-      headers: headers,
-      body: jsonEncode({'owner_id': ownerId}),
-    );
-    await _checkResponse(response);
+    await withRetry(() async {
+      final response = await _client
+          .post(
+            uri,
+            headers: headers,
+            body: jsonEncode({'owner_id': ownerId}),
+          )
+          .timeout(_readTimeout);
+      await _checkResponse(response);
+    }, label: 'closeSession');
   }
 
   /// Fetch chat history (transcript) for a session.
@@ -355,24 +393,27 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/history?session_id=$sessionId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await _client.get(uri, headers: headers);
-    await _checkResponse(response);
+    return withRetry(() async {
+      final response =
+          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      await _checkResponse(response);
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final turns = decoded['turns'] as List<dynamic>? ?? const <dynamic>[];
 
-    final messages = <Map<String, dynamic>>[];
-    for (final turn in turns) {
-      if (turn is List && turn.length == 2) {
-        final user = turn[0]?.toString() ?? '';
-        final assistant = turn[1]?.toString() ?? '';
-        messages.add({'role': 'user', 'content': user});
-        messages.add({'role': 'assistant', 'content': assistant});
-      } else if (turn is Map<String, dynamic>) {
-        messages.add(turn);
+      final messages = <Map<String, dynamic>>[];
+      for (final turn in turns) {
+        if (turn is List && turn.length == 2) {
+          final user = turn[0]?.toString() ?? '';
+          final assistant = turn[1]?.toString() ?? '';
+          messages.add({'role': 'user', 'content': user});
+          messages.add({'role': 'assistant', 'content': assistant});
+        } else if (turn is Map<String, dynamic>) {
+          messages.add(turn);
+        }
       }
-    }
-    return messages;
+      return messages;
+    }, label: 'getHistory');
   }
 
   // ------------------------------------------------------------------
@@ -388,14 +429,18 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/subsessions?session_id=$sessionId');
     final headers = await _authProvider.requestHeaders();
 
-    final response = await _client.get(uri, headers: headers);
-    await _checkResponse(response);
+    return withRetry(() async {
+      final response =
+          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      await _checkResponse(response);
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = decoded['subsessions'] as List<dynamic>? ?? const <dynamic>[];
-    return list
-        .map((e) => Subsession.fromJson(e as Map<String, dynamic>))
-        .toList();
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final list =
+          decoded['subsessions'] as List<dynamic>? ?? const <dynamic>[];
+      return list
+          .map((e) => Subsession.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }, label: 'listSubsessions');
   }
 
   /// Close a running subsession from the UI.
@@ -410,11 +455,15 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final response = await _client.post(
-      uri,
-      headers: headers,
-      body: jsonEncode(<String, dynamic>{}),
-    );
-    await _checkResponse(response);
+    await withRetry(() async {
+      final response = await _client
+          .post(
+            uri,
+            headers: headers,
+            body: jsonEncode(<String, dynamic>{}),
+          )
+          .timeout(_readTimeout);
+      await _checkResponse(response);
+    }, label: 'closeSubsession');
   }
 }
