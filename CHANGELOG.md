@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.5.0...robotsix_chat_mobile-v0.6.0) (2026-09-21)
+
+
+### Features
+
+* Add retry logic and timeout configuration to HTTP services (20260920T230830Z-add-retry-logic-and-timeout-configuratio-7c59) ([#88](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/88)) ([288d083](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/288d0830f5f93a5e7b7d5363113bd999c8b72375))
+
 ## [0.5.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.4.0...robotsix_chat_mobile-v0.5.0) (2026-09-07)
 
 
