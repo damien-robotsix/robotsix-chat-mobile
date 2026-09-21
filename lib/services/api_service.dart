@@ -204,19 +204,16 @@ class ApiService {
     // [http.Request] is built per attempt because a request may only be
     // sent once.  5xx responses are surfaced as a transient [ApiException]
     // so the wrapper retries them; other statuses are handled below.
-    final response = await withRetry(
-      () async {
-        final request = http.Request('POST', uri);
-        request.headers.addAll(headers);
-        request.body = jsonEncode(body);
-        final resp = await _client.send(request).timeout(_connectionTimeout);
-        if (resp.statusCode >= 500) {
-          throw ApiException(resp.statusCode, await resp.stream.bytesToString());
-        }
-        return resp;
-      },
-      label: 'sendMessage',
-    );
+    final response = await withRetry(() async {
+      final request = http.Request('POST', uri);
+      request.headers.addAll(headers);
+      request.body = jsonEncode(body);
+      final resp = await _client.send(request).timeout(_connectionTimeout);
+      if (resp.statusCode >= 500) {
+        throw ApiException(resp.statusCode, await resp.stream.bytesToString());
+      }
+      return resp;
+    }, label: 'sendMessage');
 
     // Correlate any crash report for this request with the session it
     // belongs to.
@@ -321,8 +318,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     return withRetry(() async {
-      final response =
-          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
 
       // GET /sessions returns a Map ({"sessions": [...], "active_session_id": ...}),
@@ -347,11 +345,7 @@ class ApiService {
 
     return withRetry(() async {
       final response = await _client
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'owner_id': ownerId}),
-          )
+          .post(uri, headers: headers, body: jsonEncode({'owner_id': ownerId}))
           .timeout(_readTimeout);
       await _checkResponse(response);
 
@@ -368,8 +362,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     await withRetry(() async {
-      final response =
-          await _client.delete(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .delete(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
     }, label: 'deleteSession');
   }
@@ -385,11 +380,7 @@ class ApiService {
 
     await withRetry(() async {
       final response = await _client
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'owner_id': ownerId}),
-          )
+          .post(uri, headers: headers, body: jsonEncode({'owner_id': ownerId}))
           .timeout(_readTimeout);
       await _checkResponse(response);
     }, label: 'closeSession');
@@ -407,8 +398,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     return withRetry(() async {
-      final response =
-          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -443,8 +435,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     return withRetry(() async {
-      final response =
-          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -470,11 +463,7 @@ class ApiService {
 
     await withRetry(() async {
       final response = await _client
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode(<String, dynamic>{}),
-          )
+          .post(uri, headers: headers, body: jsonEncode(<String, dynamic>{}))
           .timeout(_readTimeout);
       await _checkResponse(response);
     }, label: 'closeSubsession');

@@ -122,13 +122,15 @@ class UpdateService {
       );
       // Retry transient network failures with exponential backoff.
       final response = await withRetry(
-        () => _client.get(
-          uri,
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'User-Agent': 'robotsix-chat-mobile',
-          },
-        ).timeout(kReadTimeout),
+        () => _client
+            .get(
+              uri,
+              headers: {
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'robotsix-chat-mobile',
+              },
+            )
+            .timeout(kReadTimeout),
         label: 'checkForUpdate',
       );
 

@@ -71,17 +71,13 @@ void main() {
 
     test('isMonitor is true for periodic and wait_for_event kinds', () {
       expect(
-        Subsession.fromJson({
-          'subsession_id': 's',
-          'kind': 'periodic',
-        }).isMonitor,
+        Subsession.fromJson({'subsession_id': 's', 'kind': 'periodic'})
+            .isMonitor,
         isTrue,
       );
       expect(
-        Subsession.fromJson({
-          'subsession_id': 's',
-          'kind': 'wait_for_event',
-        }).isMonitor,
+        Subsession.fromJson({'subsession_id': 's', 'kind': 'wait_for_event'})
+            .isMonitor,
         isTrue,
       );
       expect(

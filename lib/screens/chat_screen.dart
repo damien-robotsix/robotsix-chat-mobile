@@ -129,9 +129,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -214,9 +213,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -235,9 +233,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -422,7 +419,11 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Transient (network/5xx) failures — already retried with backoff by
   /// [withRetry] — surface a "Retry" action so the user can resend the
   /// same message.  Fatal failures show a plain, non-retriable message.
-  void _handleSendFailure(String agentMsgId, Object error, String originalText) {
+  void _handleSendFailure(
+    String agentMsgId,
+    Object error,
+    String originalText,
+  ) {
     // Auth failures are fatal and actionable: send the user to Settings
     // to re-authenticate rather than offering a pointless retry.
     if (error is AuthException) {
