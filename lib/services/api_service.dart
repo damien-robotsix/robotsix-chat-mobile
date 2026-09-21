@@ -54,10 +54,10 @@ class ApiService {
     http.Client? client,
     Duration connectionTimeout = kConnectionTimeout,
     Duration readTimeout = kReadTimeout,
-  })  : _authProvider = authProvider,
-        _client = client ?? http.Client(),
-        _connectionTimeout = connectionTimeout,
-        _readTimeout = readTimeout;
+  }) : _authProvider = authProvider,
+       _client = client ?? http.Client(),
+       _connectionTimeout = connectionTimeout,
+       _readTimeout = readTimeout;
 
   // ------------------------------------------------------------------
   // Persistent config helpers
@@ -92,10 +92,10 @@ class ApiService {
   static Future<String> getOwnerId() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final subjectToken =
-        await OidcTokenExchangeAuthProvider.getSubjectToken();
-    final subject =
-        OidcTokenExchangeAuthProvider.subjectFromToken(subjectToken);
+    final subjectToken = await OidcTokenExchangeAuthProvider.getSubjectToken();
+    final subject = OidcTokenExchangeAuthProvider.subjectFromToken(
+      subjectToken,
+    );
     if (subject != null) {
       // Migrate/replace any locally-generated random id with the
       // authenticated SSO subject.
@@ -115,8 +115,10 @@ class ApiService {
   static String _generateId(int length) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final rng = Random();
-    return List.generate(length, (_) => chars[rng.nextInt(chars.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
   }
 
   /// Create an [ApiService] from previously-stored credentials.
@@ -194,10 +196,7 @@ class ApiService {
       ...await _authProvider.requestHeaders(),
     };
 
-    final body = <String, dynamic>{
-      'message': message,
-      'owner_id': ownerId,
-    };
+    final body = <String, dynamic>{'message': message, 'owner_id': ownerId};
     if (sessionId != null) body['session_id'] = sessionId;
     if (messageId != null) body['message_id'] = messageId;
 
@@ -205,19 +204,16 @@ class ApiService {
     // [http.Request] is built per attempt because a request may only be
     // sent once.  5xx responses are surfaced as a transient [ApiException]
     // so the wrapper retries them; other statuses are handled below.
-    final response = await withRetry(
-      () async {
-        final request = http.Request('POST', uri);
-        request.headers.addAll(headers);
-        request.body = jsonEncode(body);
-        final resp = await _client.send(request).timeout(_connectionTimeout);
-        if (resp.statusCode >= 500) {
-          throw ApiException(resp.statusCode, await resp.stream.bytesToString());
-        }
-        return resp;
-      },
-      label: 'sendMessage',
-    );
+    final response = await withRetry(() async {
+      final request = http.Request('POST', uri);
+      request.headers.addAll(headers);
+      request.body = jsonEncode(body);
+      final resp = await _client.send(request).timeout(_connectionTimeout);
+      if (resp.statusCode >= 500) {
+        throw ApiException(resp.statusCode, await resp.stream.bytesToString());
+      }
+      return resp;
+    }, label: 'sendMessage');
 
     // Correlate any crash report for this request with the session it
     // belongs to.
@@ -227,15 +223,21 @@ class ApiService {
       final errorBody = await response.stream.bytesToString();
       await _clearSubjectTokenIfAuthenticated();
       final error = AuthException(response.statusCode, errorBody);
-      await Observability.recordError(error, StackTrace.current,
-          reason: 'chat auth failure');
+      await Observability.recordError(
+        error,
+        StackTrace.current,
+        reason: 'chat auth failure',
+      );
       throw error;
     }
     if (response.statusCode != 200) {
       final errorBody = await response.stream.bytesToString();
       final error = ApiException(response.statusCode, errorBody);
-      await Observability.recordError(error, StackTrace.current,
-          reason: 'chat request failed');
+      await Observability.recordError(
+        error,
+        StackTrace.current,
+        reason: 'chat request failed',
+      );
       throw error;
     }
 
@@ -278,10 +280,14 @@ class ApiService {
                   correlationId: json['correlation_id'] as String?,
                 );
                 await Observability.setCustomKey(
-                    'correlationId', errorEvent.correlationId ?? 'none');
+                  'correlationId',
+                  errorEvent.correlationId ?? 'none',
+                );
                 await Observability.recordError(
-                  StateError('SSE error frame [${errorEvent.code}]: '
-                      '${errorEvent.message}'),
+                  StateError(
+                    'SSE error frame [${errorEvent.code}]: '
+                    '${errorEvent.message}',
+                  ),
                   StackTrace.current,
                   reason: 'SSE error event',
                 );
@@ -290,8 +296,11 @@ class ApiService {
           } on FormatException catch (error, stackTrace) {
             // Malformed JSON frame — skip emitting an event but report
             // the parse failure so silent frame corruption is visible.
-            await Observability.recordError(error, stackTrace,
-                reason: 'SSE frame parse error');
+            await Observability.recordError(
+              error,
+              stackTrace,
+              reason: 'SSE frame parse error',
+            );
           }
         }
       }
@@ -309,8 +318,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     return withRetry(() async {
-      final response =
-          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
 
       // GET /sessions returns a Map ({"sessions": [...], "active_session_id": ...}),
@@ -335,16 +345,13 @@ class ApiService {
 
     return withRetry(() async {
       final response = await _client
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'owner_id': ownerId}),
-          )
+          .post(uri, headers: headers, body: jsonEncode({'owner_id': ownerId}))
           .timeout(_readTimeout);
       await _checkResponse(response);
 
       return ChatSession.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }, label: 'createSession');
   }
 
@@ -355,8 +362,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     await withRetry(() async {
-      final response =
-          await _client.delete(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .delete(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
     }, label: 'deleteSession');
   }
@@ -372,11 +380,7 @@ class ApiService {
 
     await withRetry(() async {
       final response = await _client
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'owner_id': ownerId}),
-          )
+          .post(uri, headers: headers, body: jsonEncode({'owner_id': ownerId}))
           .timeout(_readTimeout);
       await _checkResponse(response);
     }, label: 'closeSession');
@@ -394,8 +398,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     return withRetry(() async {
-      final response =
-          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -430,8 +435,9 @@ class ApiService {
     final headers = await _authProvider.requestHeaders();
 
     return withRetry(() async {
-      final response =
-          await _client.get(uri, headers: headers).timeout(_readTimeout);
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(_readTimeout);
       await _checkResponse(response);
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -457,11 +463,7 @@ class ApiService {
 
     await withRetry(() async {
       final response = await _client
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode(<String, dynamic>{}),
-          )
+          .post(uri, headers: headers, body: jsonEncode(<String, dynamic>{}))
           .timeout(_readTimeout);
       await _checkResponse(response);
     }, label: 'closeSubsession');

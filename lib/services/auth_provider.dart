@@ -95,10 +95,7 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
       '$normalized/auth/login?redirect_to=robotsixchat://auth/callback',
     );
 
-    return await launchUrl(
-      loginUrl,
-      mode: LaunchMode.externalApplication,
-    );
+    return await launchUrl(loginUrl, mode: LaunchMode.externalApplication);
   }
 
   /// Process the SSO callback deep-link.
@@ -125,8 +122,9 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
     final parts = jwt.split('.');
     if (parts.length != 3) return null;
     try {
-      final decoded =
-          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final decoded = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
       final claims = jsonDecode(decoded) as Map<String, dynamic>;
       final sub = claims['sub'];
       return sub is String && sub.isNotEmpty ? sub : null;
@@ -152,8 +150,8 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
     this.subjectToken,
     http.Client? client,
     DateTime Function()? clock,
-  })  : _client = client ?? http.Client(),
-        _clock = clock ?? DateTime.now;
+  }) : _client = client ?? http.Client(),
+       _clock = clock ?? DateTime.now;
 
   /// Whether the provider currently holds credentials that can be used
   /// to authenticate — either a cached access token that is still valid
@@ -235,9 +233,7 @@ class OidcTokenExchangeAuthProvider implements AuthProvider {
     try {
       payload = jsonDecode(response.body) as Map<String, dynamic>;
     } on FormatException {
-      throw const FormatException(
-        'Token-exchange response was not valid JSON',
-      );
+      throw const FormatException('Token-exchange response was not valid JSON');
     } on TypeError {
       throw const FormatException(
         'Token-exchange response was not a JSON object',

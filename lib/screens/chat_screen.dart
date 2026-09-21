@@ -56,8 +56,9 @@ class _ChatScreenState extends State<ChatScreen> {
     // Re-initialise the API client whenever auth state becomes true (e.g.
     // after SSO login), so the chat screen stops using a stale token-less
     // client built before login.
-    _authSub =
-        OidcTokenExchangeAuthProvider.authStateChanges.listen((isLoggedIn) {
+    _authSub = OidcTokenExchangeAuthProvider.authStateChanges.listen((
+      isLoggedIn,
+    ) {
       if (isLoggedIn && mounted) {
         _initApiService();
       }
@@ -128,9 +129,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -160,12 +160,14 @@ class _ChatScreenState extends State<ChatScreen> {
           for (final entry in history) {
             final role = entry['role'] as String? ?? 'user';
             final content = entry['content'] as String? ?? '';
-            _messages.add(ChatMessage(
-              id: '${_nextId++}',
-              text: content,
-              isUser: role == 'user',
-              timestamp: DateTime.now(),
-            ));
+            _messages.add(
+              ChatMessage(
+                id: '${_nextId++}',
+                text: content,
+                isUser: role == 'user',
+                timestamp: DateTime.now(),
+              ),
+            );
           }
           _isLoading = false;
         });
@@ -211,9 +213,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -232,9 +233,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _loadSessions();
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
         _showReLoginPrompt();
       }
     } on ApiException catch (e) {
@@ -334,12 +334,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   StreamSubscription<ChatEvent> _subscribeToStream(
-      Stream<ChatEvent> stream, String agentMsgId, String originalText) {
+    Stream<ChatEvent> stream,
+    String agentMsgId,
+    String originalText,
+  ) {
     return stream.listen(
       (event) => _onStreamEvent(event, agentMsgId),
       onError: (Object error, StackTrace stackTrace) {
-        Observability.recordError(error, stackTrace,
-            reason: 'SSE stream error');
+        Observability.recordError(
+          error,
+          stackTrace,
+          reason: 'SSE stream error',
+        );
         // Classify so transient failures offer a "Retry" action.
         _handleSendFailure(agentMsgId, error, originalText);
       },
@@ -356,12 +362,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isEmpty || _isLoading) return;
 
     setState(() {
-      _messages.add(ChatMessage(
-        id: '${_nextId++}',
-        text: text,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(
+          id: '${_nextId++}',
+          text: text,
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+      );
       _controller.clear();
       _isLoading = true;
       // Sending a message transitions from the compact summary to the
@@ -371,12 +379,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final agentMsgId = '${_nextId++}';
     setState(() {
-      _messages.add(ChatMessage(
-        id: agentMsgId,
-        text: '',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(
+          id: agentMsgId,
+          text: '',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
     });
     _scrollToBottom();
 
@@ -409,7 +419,11 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Transient (network/5xx) failures — already retried with backoff by
   /// [withRetry] — surface a "Retry" action so the user can resend the
   /// same message.  Fatal failures show a plain, non-retriable message.
-  void _handleSendFailure(String agentMsgId, Object error, String originalText) {
+  void _handleSendFailure(
+    String agentMsgId,
+    Object error,
+    String originalText,
+  ) {
     // Auth failures are fatal and actionable: send the user to Settings
     // to re-authenticate rather than offering a pointless retry.
     if (error is AuthException) {
@@ -512,10 +526,7 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           // Session indicator bar
-          SessionBar(
-            sessionId: _sessionId,
-            onNewSession: _createSession,
-          ),
+          SessionBar(sessionId: _sessionId, onNewSession: _createSession),
           Expanded(
             child: _messages.isEmpty
                 ? const Center(
@@ -526,15 +537,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   )
                 : _showSummary
-                    ? SummaryCard(
-                        title: _sessionTitle(),
-                        messageCount: _messages.length,
-                        lastMessageText: _messages.isNotEmpty
-                            ? _messages.last.text
-                            : null,
-                        onExpand: _expandTranscript,
-                      )
-                    : _buildTranscriptList(),
+                ? SummaryCard(
+                    title: _sessionTitle(),
+                    messageCount: _messages.length,
+                    lastMessageText: _messages.isNotEmpty
+                        ? _messages.last.text
+                        : null,
+                    onExpand: _expandTranscript,
+                  )
+                : _buildTranscriptList(),
           ),
           // Input bar
           ChatInputBar(

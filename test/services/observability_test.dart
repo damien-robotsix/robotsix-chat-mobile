@@ -10,24 +10,28 @@ void main() {
       expect(Observability.isEnabled, isFalse);
     });
 
-    test('recordError is a no-op (completes) when Firebase is disabled',
-        () async {
-      await expectLater(
-        Observability.recordError(
-          StateError('boom'),
-          StackTrace.current,
-          reason: 'test',
-        ),
-        completes,
-      );
-    });
+    test(
+      'recordError is a no-op (completes) when Firebase is disabled',
+      () async {
+        await expectLater(
+          Observability.recordError(
+            StateError('boom'),
+            StackTrace.current,
+            reason: 'test',
+          ),
+          completes,
+        );
+      },
+    );
 
-    test('setCustomKey is a no-op (completes) when Firebase is disabled',
-        () async {
-      await expectLater(
-        Observability.setCustomKey('sessionId', 'none'),
-        completes,
-      );
-    });
+    test(
+      'setCustomKey is a no-op (completes) when Firebase is disabled',
+      () async {
+        await expectLater(
+          Observability.setCustomKey('sessionId', 'none'),
+          completes,
+        );
+      },
+    );
   });
 }

@@ -103,7 +103,8 @@ void main() {
   group('checkForUpdate', () {
     const currentVersion = '0.1.0';
     const latestVersion = '0.2.0';
-    const apkUrl = 'https://github.com/damien-robotsix/robotsix-chat-mobile/releases/download/v0.2.0/app.apk';
+    const apkUrl =
+        'https://github.com/damien-robotsix/robotsix-chat-mobile/releases/download/v0.2.0/app.apk';
 
     setUp(() {
       PackageInfo.setMockInitialValues(
@@ -120,10 +121,7 @@ void main() {
       required String tag,
       required List<Map<String, dynamic>> assets,
     }) {
-      return {
-        'tag_name': tag,
-        'assets': assets,
-      };
+      return {'tag_name': tag, 'assets': assets};
     }
 
     Map<String, dynamic> apkAsset(String name, String url) {
@@ -136,12 +134,8 @@ void main() {
         assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -157,12 +151,8 @@ void main() {
         assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -176,12 +166,8 @@ void main() {
         assets: [apkAsset('app-release.apk', apkUrl)],
       );
 
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -189,12 +175,8 @@ void main() {
     });
 
     test('returns error on non-200 response', () async {
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response('Not Found', 404));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response('Not Found', 404));
 
       final result = await service.checkForUpdate();
 
@@ -203,12 +185,8 @@ void main() {
     });
 
     test('returns error on 500 response', () async {
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response('Server Error', 500));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response('Server Error', 500));
 
       final result = await service.checkForUpdate();
 
@@ -217,12 +195,8 @@ void main() {
     });
 
     test('returns error on SocketException', () async {
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenThrow(const SocketException('No connection'));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenThrow(const SocketException('No connection'));
 
       final result = await service.checkForUpdate();
 
@@ -231,12 +205,8 @@ void main() {
     });
 
     test('returns error on ClientException', () async {
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenThrow(http.ClientException('Connection failed'));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenThrow(http.ClientException('Connection failed'));
 
       final result = await service.checkForUpdate();
 
@@ -248,16 +218,15 @@ void main() {
       final body = releaseJson(
         tag: 'v$latestVersion',
         assets: [
-          {'name': 'source.zip', 'browser_download_url': 'https://example.com/src.zip'},
+          {
+            'name': 'source.zip',
+            'browser_download_url': 'https://example.com/src.zip',
+          },
         ],
       );
 
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response(jsonEncode(body), 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(jsonEncode(body), 200));
 
       final result = await service.checkForUpdate();
 
@@ -266,12 +235,8 @@ void main() {
     });
 
     test('returns error on malformed JSON', () async {
-      when(
-        () => mockClient.get(
-          any(),
-          headers: any(named: 'headers'),
-        ),
-      ).thenAnswer((_) async => http.Response('not json', 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response('not json', 200));
 
       final result = await service.checkForUpdate();
 
@@ -288,18 +253,19 @@ void main() {
     late String cacheDir;
 
     setUp(() async {
-      final tempDir =
-          await Directory.systemTemp.createTemp('update_service_test');
+      final tempDir = await Directory.systemTemp.createTemp(
+        'update_service_test',
+      );
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/path_provider'),
-        (call) async {
-          if (call.method == 'getApplicationCacheDirectory') {
-            return tempDir.path;
-          }
-          return null;
-        },
-      );
+            const MethodChannel('plugins.flutter.io/path_provider'),
+            (call) async {
+              if (call.method == 'getApplicationCacheDirectory') {
+                return tempDir.path;
+              }
+              return null;
+            },
+          );
       cacheDir = (await getApplicationCacheDirectory()).path;
     });
 
@@ -308,29 +274,26 @@ void main() {
       // doesn't leak into the next one.
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('com.robotsix.chat_mobile/install'),
-        null,
-      );
+            const MethodChannel('com.robotsix.chat_mobile/install'),
+            null,
+          );
     });
 
     test('completes without throwing on success', () async {
       var installInvoked = false;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('com.robotsix.chat_mobile/install'),
-        (call) async {
-          expect(call.method, 'installApk');
-          expect(call.arguments['path'], contains('update.apk'));
-          installInvoked = true;
-          return true;
-        },
-      );
+            const MethodChannel('com.robotsix.chat_mobile/install'),
+            (call) async {
+              expect(call.method, 'installApk');
+              expect(call.arguments['path'], contains('update.apk'));
+              installInvoked = true;
+              return true;
+            },
+          );
 
-      when(
-        () => mockClient.get(any()),
-      ).thenAnswer(
-        (_) async => http.Response.bytes(apkData, 200),
-      );
+      when(() => mockClient.get(any()))
+          .thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
       await service.downloadAndInstall('https://example.com/update.apk');
 
@@ -343,11 +306,8 @@ void main() {
     });
 
     test('throws downloadFailed on non-200 response', () async {
-      when(
-        () => mockClient.get(any()),
-      ).thenAnswer(
-        (_) async => http.Response('Forbidden', 403),
-      );
+      when(() => mockClient.get(any()))
+          .thenAnswer((_) async => http.Response('Forbidden', 403));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),
@@ -362,9 +322,8 @@ void main() {
     });
 
     test('throws downloadFailed on SocketException', () async {
-      when(
-        () => mockClient.get(any()),
-      ).thenThrow(const SocketException('No connection'));
+      when(() => mockClient.get(any()))
+          .thenThrow(const SocketException('No connection'));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),
@@ -378,54 +337,50 @@ void main() {
       );
     });
 
-    test('throws permissionRequired when native reports PERMISSION_REQUIRED',
-        () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('com.robotsix.chat_mobile/install'),
-        (call) async {
-          throw PlatformException(
-            code: 'PERMISSION_REQUIRED',
-            message: 'Permission to install unknown apps is required.',
-          );
-        },
-      );
+    test(
+      'throws permissionRequired when native reports PERMISSION_REQUIRED',
+      () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.robotsix.chat_mobile/install'),
+              (call) async {
+                throw PlatformException(
+                  code: 'PERMISSION_REQUIRED',
+                  message: 'Permission to install unknown apps is required.',
+                );
+              },
+            );
 
-      when(
-        () => mockClient.get(any()),
-      ).thenAnswer(
-        (_) async => http.Response.bytes(apkData, 200),
-      );
+        when(() => mockClient.get(any()))
+            .thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
-      await expectLater(
-        service.downloadAndInstall('https://example.com/update.apk'),
-        throwsA(
-          isA<InstallException>().having(
-            (e) => e.kind,
-            'kind',
-            InstallErrorKind.permissionRequired,
+        await expectLater(
+          service.downloadAndInstall('https://example.com/update.apk'),
+          throwsA(
+            isA<InstallException>().having(
+              (e) => e.kind,
+              'kind',
+              InstallErrorKind.permissionRequired,
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('throws platformError on other PlatformException', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('com.robotsix.chat_mobile/install'),
-        (call) async {
-          throw PlatformException(
-            code: 'INSTALL_ERROR',
-            message: 'Failed to launch install',
+            const MethodChannel('com.robotsix.chat_mobile/install'),
+            (call) async {
+              throw PlatformException(
+                code: 'INSTALL_ERROR',
+                message: 'Failed to launch install',
+              );
+            },
           );
-        },
-      );
 
-      when(
-        () => mockClient.get(any()),
-      ).thenAnswer(
-        (_) async => http.Response.bytes(apkData, 200),
-      );
+      when(() => mockClient.get(any()))
+          .thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),
@@ -445,15 +400,12 @@ void main() {
       // that predates the native installApk handler).
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('com.robotsix.chat_mobile/install'),
-        null,
-      );
+            const MethodChannel('com.robotsix.chat_mobile/install'),
+            null,
+          );
 
-      when(
-        () => mockClient.get(any()),
-      ).thenAnswer(
-        (_) async => http.Response.bytes(apkData, 200),
-      );
+      when(() => mockClient.get(any()))
+          .thenAnswer((_) async => http.Response.bytes(apkData, 200));
 
       await expectLater(
         service.downloadAndInstall('https://example.com/update.apk'),

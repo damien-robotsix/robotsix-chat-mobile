@@ -6,11 +6,7 @@ class ChatSession {
   final String? title;
   final int? turnCount;
 
-  const ChatSession({
-    required this.sessionId,
-    this.title,
-    this.turnCount,
-  });
+  const ChatSession({required this.sessionId, this.title, this.turnCount});
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
     return ChatSession(
