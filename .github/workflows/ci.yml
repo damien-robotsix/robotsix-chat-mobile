@@ -70,3 +70,25 @@ jobs:
         with:
           name: app-debug
           path: build/app/outputs/flutter-apk/*.apk
+
+  osv-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2  # v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
+
+      # Resolve the full dependency graph (incl. transitive deps) so the
+      # scanner has a pubspec.lock to inspect — the lockfile is not committed.
+      - run: flutter pub get
+
+      - uses: google/osv-scanner-action/osv-scanner-action@a345acffa64b0eaede81a3d9aae6141214d9c8fc  # v2.6.0
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
