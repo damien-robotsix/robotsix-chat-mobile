@@ -151,22 +151,20 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
     try {
       await api.closeSubsession(sub.subsessionId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Closed "${sub.title}"')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Closed "${sub.title}"')));
         await _refresh();
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Close failed: ${e.message}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Close failed: ${e.message}')));
       }
     }
   }
@@ -184,9 +182,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              sub.title.isEmpty
-                  ? _shortId(sub.subsessionId)
-                  : sub.title,
+              sub.title.isEmpty ? _shortId(sub.subsessionId) : sub.title,
               style: Theme.of(ctx).textTheme.titleLarge,
             ),
             const SizedBox(height: 4),
@@ -202,7 +198,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
               ctx,
               'Runs',
               '${sub.runs ?? 0}'
-              '${sub.maxRuns != null ? ' / ${sub.maxRuns}' : ''}',
+                  '${sub.maxRuns != null ? ' / ${sub.maxRuns}' : ''}',
             ),
             if (sub.intervalSeconds != null)
               _detailLine(
@@ -212,11 +208,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
               ),
             if (sub.nextRunAt != null)
               _detailLine(ctx, 'Next run', _formatFuture(sub.nextRunAt!)),
-            _detailLine(
-              ctx,
-              'Last activity',
-              _formatPast(sub.lastActivityAt),
-            ),
+            _detailLine(ctx, 'Last activity', _formatPast(sub.lastActivityAt)),
             if (sub.modelLevel != null)
               _detailLine(ctx, 'Model level', '${sub.modelLevel}'),
             if (sub.summary != null && sub.summary!.isNotEmpty)
@@ -267,9 +259,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
   Widget build(BuildContext context) {
     final activeCount = _rows.where((r) => r.subsession.isActive).length;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Subsessions & Monitors'),
-      ),
+      appBar: AppBar(title: const Text('Subsessions & Monitors')),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: _buildBody(activeCount),
@@ -288,8 +278,10 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Text('Failed to load subsessions',
-                    style: Theme.of(context).textTheme.bodyLarge),
+                Text(
+                  'Failed to load subsessions',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   _error!,
@@ -299,10 +291,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: _refresh,
-                  child: const Text('Retry'),
-                ),
+                OutlinedButton(onPressed: _refresh, child: const Text('Retry')),
               ],
             ),
           ),
@@ -365,10 +354,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
           }
         },
         itemBuilder: (_) => [
-          const PopupMenuItem(
-            value: 'details',
-            child: Text('Details'),
-          ),
+          const PopupMenuItem(value: 'details', child: Text('Details')),
           if (sub.isActive)
             const PopupMenuItem(
               value: 'close',
@@ -381,8 +367,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
   }
 }
 
-String _shortId(String id) =>
-    id.length > 12 ? '${id.substring(0, 12)}…' : id;
+String _shortId(String id) => id.length > 12 ? '${id.substring(0, 12)}…' : id;
 
 IconData _kindIcon(String kind) {
   switch (kind) {

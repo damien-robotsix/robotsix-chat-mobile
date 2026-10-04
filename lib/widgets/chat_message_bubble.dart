@@ -15,8 +15,9 @@ class ChatMessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: Align(
-        alignment:
-            message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+        alignment: message.isUser
+            ? Alignment.centerRight
+            : Alignment.centerLeft,
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(

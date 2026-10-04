@@ -39,11 +39,13 @@ void main() {
 
     expect(find.text('API Token'), findsNothing);
     expect(find.text('Clear Token'), findsNothing);
-    expect(find.byIcon(Icons.logout), findsNothing); // not shown when logged out
+    expect(
+      find.byIcon(Icons.logout),
+      findsNothing,
+    ); // not shown when logged out
   });
 
-  testWidgets('save and check-for-updates buttons are present',
-      (tester) async {
+  testWidgets('save and check-for-updates buttons are present', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
     await tester.pumpAndSettle();
 

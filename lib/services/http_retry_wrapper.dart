@@ -80,7 +80,8 @@ Future<T> withRetry<T>(
       await Observability.recordError(
         error,
         stackTrace,
-        reason: 'retrying transient failure'
+        reason:
+            'retrying transient failure'
             "${label != null ? ' [$label]' : ''}"
             ' (attempt $attempt/$maxAttempts)',
       );

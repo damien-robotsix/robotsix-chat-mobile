@@ -75,13 +75,10 @@ void main() {
     test('honours a custom maxAttempts', () async {
       var calls = 0;
       await expectLater(
-        withRetry(
-          () async {
-            calls++;
-            throw const SocketException('down');
-          },
-          maxAttempts: 5,
-        ),
+        withRetry(() async {
+          calls++;
+          throw const SocketException('down');
+        }, maxAttempts: 5),
         throwsA(isA<SocketException>()),
       );
       expect(calls, 5);

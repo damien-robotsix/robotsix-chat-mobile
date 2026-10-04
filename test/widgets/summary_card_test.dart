@@ -5,16 +5,18 @@ import 'package:robotsix_chat_mobile/widgets/summary_card.dart';
 
 void main() {
   testWidgets('renders title, message count and last message', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SummaryCard(
-          title: 'My chat',
-          messageCount: 3,
-          lastMessageText: 'hello there',
-          onExpand: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SummaryCard(
+            title: 'My chat',
+            messageCount: 3,
+            lastMessageText: 'hello there',
+            onExpand: () {},
+          ),
         ),
       ),
-    ));
+    );
 
     expect(find.text('My chat'), findsOneWidget);
     expect(find.text('3 messages'), findsOneWidget);
@@ -23,32 +25,36 @@ void main() {
   });
 
   testWidgets('uses singular "message" for a single message', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SummaryCard(
-          title: 'My chat',
-          messageCount: 1,
-          lastMessageText: null,
-          onExpand: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SummaryCard(
+            title: 'My chat',
+            messageCount: 1,
+            lastMessageText: null,
+            onExpand: () {},
+          ),
         ),
       ),
-    ));
+    );
 
     expect(find.text('1 message'), findsOneWidget);
   });
 
   testWidgets('tapping the expand button invokes onExpand', (tester) async {
     var expanded = 0;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SummaryCard(
-          title: 'My chat',
-          messageCount: 2,
-          lastMessageText: 'hi',
-          onExpand: () => expanded++,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SummaryCard(
+            title: 'My chat',
+            messageCount: 2,
+            lastMessageText: 'hi',
+            onExpand: () => expanded++,
+          ),
         ),
       ),
-    ));
+    );
 
     await tester.tap(find.text('Show full transcript'));
     expect(expanded, 1);

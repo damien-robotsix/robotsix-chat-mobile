@@ -26,8 +26,12 @@ class Observability {
     bool fatal = false,
   }) async {
     if (!isEnabled) return;
-    await FirebaseCrashlytics.instance
-        .recordError(error, stackTrace, reason: reason, fatal: fatal);
+    await FirebaseCrashlytics.instance.recordError(
+      error,
+      stackTrace,
+      reason: reason,
+      fatal: fatal,
+    );
   }
 
   /// Attach a custom key/value pair to subsequent crash reports so the

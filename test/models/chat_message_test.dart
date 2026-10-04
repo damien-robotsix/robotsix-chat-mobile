@@ -22,31 +22,34 @@ void main() {
       expect(message.timestamp, equals(timestamp));
     });
 
-    test('immutability — copy produces a distinct instance with equal fields', () {
-      final original = ChatMessage(
-        id: 'original',
-        text: 'immutable text',
-        isUser: false,
-        timestamp: timestamp,
-      );
+    test(
+      'immutability — copy produces a distinct instance with equal fields',
+      () {
+        final original = ChatMessage(
+          id: 'original',
+          text: 'immutable text',
+          isUser: false,
+          timestamp: timestamp,
+        );
 
-      final copy = ChatMessage(
-        id: original.id,
-        text: original.text,
-        isUser: original.isUser,
-        timestamp: original.timestamp,
-      );
+        final copy = ChatMessage(
+          id: original.id,
+          text: original.text,
+          isUser: original.isUser,
+          timestamp: original.timestamp,
+        );
 
-      // The copy is a different object (not identical), proving that the
-      // class does not share mutable state via a singleton or cache.
-      expect(identical(original, copy), isFalse);
+        // The copy is a different object (not identical), proving that the
+        // class does not share mutable state via a singleton or cache.
+        expect(identical(original, copy), isFalse);
 
-      // Field values are faithfully preserved.
-      expect(copy.id, equals(original.id));
-      expect(copy.text, equals(original.text));
-      expect(copy.isUser, equals(original.isUser));
-      expect(copy.timestamp, equals(original.timestamp));
-    });
+        // Field values are faithfully preserved.
+        expect(copy.id, equals(original.id));
+        expect(copy.text, equals(original.text));
+        expect(copy.isUser, equals(original.isUser));
+        expect(copy.timestamp, equals(original.timestamp));
+      },
+    );
 
     test('equality — same field values are structurally equivalent', () {
       final a = ChatMessage(

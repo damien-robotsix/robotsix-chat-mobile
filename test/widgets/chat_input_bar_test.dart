@@ -8,15 +8,17 @@ void main() {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: ChatInputBar(
-          controller: controller,
-          isLoading: false,
-          onSend: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatInputBar(
+            controller: controller,
+            isLoading: false,
+            onSend: () {},
+          ),
         ),
       ),
-    ));
+    );
 
     expect(find.widgetWithText(TextField, 'Type a message...'), findsOneWidget);
     expect(find.byIcon(Icons.send), findsOneWidget);
@@ -27,15 +29,17 @@ void main() {
     addTearDown(controller.dispose);
     var sent = 0;
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: ChatInputBar(
-          controller: controller,
-          isLoading: false,
-          onSend: () => sent++,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatInputBar(
+            controller: controller,
+            isLoading: false,
+            onSend: () => sent++,
+          ),
         ),
       ),
-    ));
+    );
 
     await tester.tap(find.byIcon(Icons.send));
     expect(sent, 1);
@@ -45,15 +49,17 @@ void main() {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: ChatInputBar(
-          controller: controller,
-          isLoading: true,
-          onSend: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatInputBar(
+            controller: controller,
+            isLoading: true,
+            onSend: () {},
+          ),
         ),
       ),
-    ));
+    );
 
     final button = tester.widget<IconButton>(find.byType(IconButton));
     expect(button.onPressed, isNull);
