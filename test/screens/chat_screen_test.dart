@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:robotsix_chat_mobile/models/chat_message.dart';
 import 'package:robotsix_chat_mobile/screens/chat_screen.dart';
 
 void main() {
@@ -9,6 +10,43 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  group('parseHistoryEntries', () {
+    test('maps role and content to ChatMessage models', () {
+      final messages = parseHistoryEntries([
+        {'role': 'user', 'content': 'hello'},
+        {'role': 'assistant', 'content': 'hi there'},
+      ]);
+
+      expect(messages, hasLength(2));
+      expect(messages[0], isA<ChatMessage>());
+      expect(messages[0].text, 'hello');
+      expect(messages[0].isUser, isTrue);
+      expect(messages[1].text, 'hi there');
+      expect(messages[1].isUser, isFalse);
+    });
+
+    test('defaults missing role to user and missing content to empty', () {
+      final messages = parseHistoryEntries([<String, dynamic>{}]);
+
+      expect(messages, hasLength(1));
+      expect(messages.single.text, '');
+      expect(messages.single.isUser, isTrue);
+    });
+
+    test('seeds sequential ids from startId', () {
+      final messages = parseHistoryEntries([
+        {'role': 'user', 'content': 'a'},
+        {'role': 'assistant', 'content': 'b'},
+      ], startId: 5);
+
+      expect(messages.map((m) => m.id).toList(), ['5', '6']);
+    });
+
+    test('returns an empty list for empty history', () {
+      expect(parseHistoryEntries([]), isEmpty);
+    });
   });
 
   testWidgets(
