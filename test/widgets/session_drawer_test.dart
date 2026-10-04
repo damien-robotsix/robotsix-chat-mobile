@@ -37,9 +37,11 @@ void main() {
 
   testWidgets('shows the error and retry invokes onRetry', (tester) async {
     var retried = 0;
-    await tester.pumpWidget(MaterialApp(
-      home: _drawer(error: 'boom', onRetry: () => retried++),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _drawer(error: 'boom', onRetry: () => retried++),
+      ),
+    );
 
     expect(find.text('Failed to load sessions'), findsOneWidget);
     expect(find.text('boom'), findsOneWidget);
@@ -48,23 +50,26 @@ void main() {
     expect(retried, 1);
   });
 
-  testWidgets('shows the empty state when there are no sessions',
-      (tester) async {
+  testWidgets('shows the empty state when there are no sessions', (
+    tester,
+  ) async {
     await tester.pumpWidget(MaterialApp(home: _drawer()));
     expect(find.text('No sessions yet.'), findsOneWidget);
     expect(find.text('Create one'), findsOneWidget);
   });
 
   testWidgets('renders a SessionTile per session', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: _drawer(
-        sessions: const [
-          ChatSession(sessionId: 's1', title: 'First', turnCount: 2),
-          ChatSession(sessionId: 's2', title: 'Second'),
-        ],
-        activeSessionId: 's1',
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _drawer(
+          sessions: const [
+            ChatSession(sessionId: 's1', title: 'First', turnCount: 2),
+            ChatSession(sessionId: 's2', title: 'Second'),
+          ],
+          activeSessionId: 's1',
+        ),
       ),
-    ));
+    );
 
     expect(find.byType(SessionTile), findsNWidgets(2));
     expect(find.text('First'), findsOneWidget);
@@ -73,12 +78,14 @@ void main() {
 
   testWidgets('delete menu action invokes onDeleteSession', (tester) async {
     String? deleted;
-    await tester.pumpWidget(MaterialApp(
-      home: _drawer(
-        sessions: const [ChatSession(sessionId: 's1', title: 'First')],
-        onDeleteSession: (id) => deleted = id,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _drawer(
+          sessions: const [ChatSession(sessionId: 's1', title: 'First')],
+          onDeleteSession: (id) => deleted = id,
+        ),
       ),
-    ));
+    );
 
     await tester.tap(find.byType(PopupMenuButton<String>));
     await tester.pumpAndSettle();

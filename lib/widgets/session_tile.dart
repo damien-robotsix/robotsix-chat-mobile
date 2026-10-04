@@ -26,9 +26,7 @@ class SessionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       selected: isActive,
-      leading: Icon(
-        isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
-      ),
+      leading: Icon(isActive ? Icons.chat_bubble : Icons.chat_bubble_outline),
       title: Text(
         session.title ??
             '${session.sessionId.length > 16 ? session.sessionId.substring(0, 16) : session.sessionId}...',
@@ -48,16 +46,10 @@ class SessionTile extends StatelessWidget {
           }
         },
         itemBuilder: (_) => [
-          const PopupMenuItem(
-            value: 'close',
-            child: Text('Close'),
-          ),
+          const PopupMenuItem(value: 'close', child: Text('Close')),
           const PopupMenuItem(
             value: 'delete',
-            child: Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
