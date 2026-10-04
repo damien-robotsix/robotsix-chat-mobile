@@ -151,14 +151,16 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
     try {
       await api.closeSubsession(sub.subsessionId);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Closed "${sub.title}"')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Closed "${sub.title}"')));
         await _refresh();
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } on ApiException catch (e) {
       if (mounted) {
