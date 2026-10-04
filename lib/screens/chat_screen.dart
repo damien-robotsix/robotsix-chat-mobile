@@ -27,6 +27,35 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
+/// Pure mapping from raw history entries to [ChatMessage] models, exposed as
+/// a top-level function so the transformation can be unit-tested
+/// independently of the widget.
+///
+/// Each entry is expected to be a map with optional `role` and `content`
+/// keys; missing values default to a user message with empty text.
+/// [startId] seeds the sequential message ids.
+@visibleForTesting
+List<ChatMessage> parseHistoryEntries(
+  List<dynamic> history, {
+  int startId = 0,
+}) {
+  final messages = <ChatMessage>[];
+  var id = startId;
+  for (final entry in history) {
+    final role = entry['role'] as String? ?? 'user';
+    final content = entry['content'] as String? ?? '';
+    messages.add(
+      ChatMessage(
+        id: '${id++}',
+        text: content,
+        isUser: role == 'user',
+        timestamp: DateTime.now(),
+      ),
+    );
+  }
+  return messages;
+}
+
 class _ChatScreenState extends State<ChatScreen> {
   final _messages = <ChatMessage>[];
   final _controller = TextEditingController();
@@ -143,6 +172,31 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Transforms raw history entries into [ChatMessage] models, advancing the
+  /// screen's message id counter.
+  List<ChatMessage> _parseHistory(List<dynamic> history) {
+    final messages = parseHistoryEntries(history, startId: _nextId);
+    _nextId += messages.length;
+    return messages;
+  }
+
+  /// Centralizes the error handling for [_switchToSession]: resets the
+  /// transcript state, then runs the error-specific follow-up action.
+  void _handleSessionLoadError(Object error) {
+    if (!mounted) return;
+    setState(() {
+      _messages.clear();
+      _isLoading = false;
+    });
+    if (error is AuthException) {
+      _showReLoginPrompt();
+    } else if (error is ApiException) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('History load failed: ${error.message}')),
+      );
+    }
+  }
+
   Future<void> _switchToSession(String sessionId) async {
     if (_apiService == null) return;
     setState(() {
@@ -155,49 +209,19 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     try {
       final history = await _apiService!.getHistory(sessionId);
-      if (mounted) {
-        setState(() {
-          _messages.clear();
-          for (final entry in history) {
-            final role = entry['role'] as String? ?? 'user';
-            final content = entry['content'] as String? ?? '';
-            _messages.add(
-              ChatMessage(
-                id: '${_nextId++}',
-                text: content,
-                isUser: role == 'user',
-                timestamp: DateTime.now(),
-              ),
-            );
-          }
-          _isLoading = false;
-        });
-        // Bring the most recent message into view once the transcript has
-        // rendered.
-        _scrollToBottom();
-      }
-    } on AuthException {
-      if (mounted) {
-        setState(() {
-          _messages.clear();
-          _isLoading = false;
-        });
-        _showReLoginPrompt();
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        setState(() {
-          _messages.clear();
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('History load failed: ${e.message}')),
-        );
-      }
+      if (!mounted) return;
+      final parsed = _parseHistory(history);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(parsed);
+        _isLoading = false;
+      });
+      // Bring the most recent message into view once the transcript has
+      // rendered.
+      _scrollToBottom();
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      _handleSessionLoadError(e);
     }
   }
 
