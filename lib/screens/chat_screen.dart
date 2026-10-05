@@ -518,7 +518,7 @@ class _ChatScreenState extends State<ChatScreen> {
         title: const Text('robotsix-chat'),
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
+            icon: const Icon(Icons.menu, semanticLabel: 'Sessions'),
             tooltip: 'Sessions',
             onPressed: () {
               Scaffold.of(context).openDrawer();
@@ -528,12 +528,15 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_tree),
+            icon: const Icon(
+              Icons.account_tree,
+              semanticLabel: 'Subsessions and monitors',
+            ),
             tooltip: 'Subsessions & monitors',
             onPressed: () => Navigator.pushNamed(context, '/subsessions'),
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings, semanticLabel: 'Settings'),
             tooltip: 'Settings',
             onPressed: _openSettings,
           ),

@@ -45,6 +45,7 @@ test/
 - [Configuration reference](docs/configuration.md) — all stored settings keys and backends
 - [In-app auto-update](docs/auto-update.md) — auto-update flow and operator provisioning
 - [Release process](docs/release-process.md) — automated release-please flow and APK publishing
+- [Accessibility](docs/accessibility.md) — a11y strategy, screen-reader testing, and labelling conventions
 
 For cross-cutting conventions, see the [robotsix-standards](https://github.com/damien-robotsix/robotsix-standards).
 
