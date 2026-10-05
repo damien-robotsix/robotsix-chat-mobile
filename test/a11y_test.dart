@@ -74,31 +74,17 @@ void main() {
       ),
     );
 
-    // Smoke test: walk the merged semantics tree the way a screen reader would
-    // and collect every announced label.
-    final labels = <String>{};
-    void visit(SemanticsNode node) {
-      final label = node.getSemanticsData().label.trim();
-      if (label.isNotEmpty) {
-        labels.add(label);
-      }
-      node.visitChildren((child) {
-        visit(child);
-        return true;
-      });
-    }
-
-    visit(tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
-
+    // `find.bySemanticsLabel` walks the merged semantics tree the way a screen
+    // reader would; both interactive elements must announce their labels.
     expect(
-      labels.any((label) => label.contains('Send message')),
-      isTrue,
-      reason: 'send button label not found in semantics tree: $labels',
+      find.bySemanticsLabel('Send message'),
+      findsWidgets,
+      reason: 'send button label not found in semantics tree',
     );
     expect(
-      labels.any((label) => label.contains('Message input')),
-      isTrue,
-      reason: 'message input label not found in semantics tree: $labels',
+      find.bySemanticsLabel('Message input'),
+      findsWidgets,
+      reason: 'message input label not found in semantics tree',
     );
   });
 }
