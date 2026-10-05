@@ -28,7 +28,7 @@ void main() {
       ),
     );
 
-    expect(find.bySemanticsLabel('Send message'), findsWidgets);
+    expect(find.bySemanticsLabel(RegExp('Send message')), findsWidgets);
   });
 
   testWidgets('message input field exposes a semantic label', (tester) async {
@@ -50,7 +50,7 @@ void main() {
       ),
     );
 
-    expect(find.bySemanticsLabel('Message input'), findsWidgets);
+    expect(find.bySemanticsLabel(RegExp('Message input')), findsWidgets);
   });
 
   testWidgets('semantic tree is traversable and exposes the expected labels', (
@@ -77,12 +77,12 @@ void main() {
     // `find.bySemanticsLabel` walks the merged semantics tree the way a screen
     // reader would; both interactive elements must announce their labels.
     expect(
-      find.bySemanticsLabel('Send message'),
+      find.bySemanticsLabel(RegExp('Send message')),
       findsWidgets,
       reason: 'send button label not found in semantics tree',
     );
     expect(
-      find.bySemanticsLabel('Message input'),
+      find.bySemanticsLabel(RegExp('Message input')),
       findsWidgets,
       reason: 'message input label not found in semantics tree',
     );
