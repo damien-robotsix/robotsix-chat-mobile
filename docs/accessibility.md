@@ -43,10 +43,15 @@ guidelines (tap-target size, labelled tap targets, and text contrast).
 
 ## Automated tests
 
-`test/a11y_test.dart` validates the semantic tree: it checks that interactive
-widgets expose semantic labels and that the UI meets Flutter's
-`labeledTapTargetGuideline` and `androidTapTargetGuideline`. Add assertions
-there when introducing new interactive widgets.
+`test/a11y_test.dart` validates the a11y annotations directly on the widget
+tree: it checks that interactive widgets expose their semantic labels
+(e.g. the send button's `Icon.semanticLabel` and the message field's
+`Semantics` label/role). It deliberately inspects widget properties rather
+than the merged semantics tree, because Flutter folds an `IconButton`'s
+tooltip and its `Icon`'s `semanticLabel` into a single compound node
+non-deterministically, which makes label-equality finders brittle across
+Flutter versions. Add assertions there when introducing new interactive
+widgets.
 
 ## References
 
