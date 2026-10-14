@@ -24,18 +24,24 @@ class ChatInputBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  hintText: 'Type a message...',
-                  border: OutlineInputBorder(),
+              child: Semantics(
+                label: 'Message input',
+                textField: true,
+                enabled: true,
+                child: TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    hintText: 'Type a message...',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => onSend(),
                 ),
-                onSubmitted: (_) => onSend(),
               ),
             ),
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.send),
+              icon: const Icon(Icons.send, semanticLabel: 'Send message'),
+              tooltip: 'Send message',
               onPressed: isLoading ? null : onSend,
             ),
           ],

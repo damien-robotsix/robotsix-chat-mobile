@@ -15,6 +15,7 @@ modules:
       - "ROADMAP.md"
       - "SECURITY.md"
       - "analysis_options.yaml"
+      - "docs/accessibility.md"
       - "docs/architecture.md"
       - "docs/auto-update.md"
       - "docs/configuration.md"
