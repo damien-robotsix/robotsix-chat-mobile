@@ -1,0 +1,31 @@
+name: Lint workflows
+
+# actionlint + zizmor over every workflow file, via the shared reusable
+# workflow. zizmor audits secret exposure, template injection and excessive
+# permissions — notably in release-apk.yml, which holds the Android signing
+# secrets and contents: write.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  lint-workflows:
+    name: Lint workflows
+    permissions:
+      contents: read  # check out the repo to lint its workflow files
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/lint-workflows.yml@2de56a85055b60d0f01c406342eda081e68c0c8b  # main
+    with:
+      run-actionlint: true
+      run-zizmor: true
