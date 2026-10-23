@@ -27,8 +27,8 @@ jobs:
        github.event.pull_request.merged == true &&
        github.event.pull_request.head.ref == 'release-please--branches--main')
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write  # push the release commit/tag and publish the GitHub Release
+      pull-requests: write  # open and update the release PR
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/release-please.yml@2de56a85055b60d0f01c406342eda081e68c0c8b  # main
     with:
       app-id: ${{ vars.RELEASE_APP_ID }}

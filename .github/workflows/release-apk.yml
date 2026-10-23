@@ -12,25 +12,37 @@ on:
   release:
     types: [published]
 
+# Never run two release builds for the same tag at once, and never cancel an
+# in-flight signed build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
   build-and-upload:
+    name: build-and-upload
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # upload the APK as an asset of the published release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
 
+      # Caching is disabled in this release workflow so the signed artifact is
+      # never built from a cache another (less trusted) workflow could poison.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2  # v2
         with:
           flutter-version: "3.47.2"
           channel: stable
-          cache: true
+          cache: false
 
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6  # v6.4.0
+        with:
+          cache-disabled: true
 
       - run: flutter pub get
 
@@ -40,17 +52,18 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
         # The semver (build name) comes from pubspec.yaml, which release-please
         # bumps. The Android build number (versionCode) is injected here from the
         # monotonically increasing CI run number so each release installs cleanly
         # as an upgrade.
-        run: flutter build apk --build-number=${{ github.run_number }}
+        run: flutter build apk --build-number="$BUILD_NUMBER"
 
+      # `gh release upload` fails if the APK is missing, so an absent build
+      # output cannot silently produce an asset-less release.
       - name: Attach APK to release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: build/app/outputs/flutter-apk/app-release.apk
-          fail_on_unmatched_files: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG_NAME" build/app/outputs/flutter-apk/app-release.apk --clobber
