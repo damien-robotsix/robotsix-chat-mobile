@@ -19,7 +19,11 @@ class _SubsessionRow {
 /// monitors, event watchers, side-chats) owned by the current user's
 /// chat sessions.
 class SubsessionsScreen extends StatefulWidget {
-  const SubsessionsScreen({super.key});
+  const SubsessionsScreen({super.key, this.apiService});
+
+  /// Optional pre-built API client (used by tests). When null, the screen
+  /// builds one from persisted settings via [ApiService.fromStorage].
+  final ApiService? apiService;
 
   @override
   State<SubsessionsScreen> createState() => _SubsessionsScreenState();
@@ -38,6 +42,7 @@ class _SubsessionsScreenState extends State<SubsessionsScreen> {
   }
 
   Future<void> _load() async {
+    _apiService ??= widget.apiService;
     try {
       _apiService ??= await ApiService.fromStorage();
     } on StateError {
