@@ -47,8 +47,8 @@ Flutter-based mobile client for the
 ┌─────────────────┐   ┌──────────────────────────┐
 │ SharedPreferences│   │ FlutterSecureStorage     │
 │                  │   │                          │
-│ - api_base_url   │   │ - api_token (encrypted)  │
-│ - owner_id       │   │                          │
+│ - api_base_url   │   │ - oidc_subject_token     │
+│ - owner_id       │   │   (encrypted)            │
 └─────────────────┘   └──────────────────────────┘
 ```
 
@@ -59,7 +59,7 @@ Flutter-based mobile client for the
 
 2. **ChatScreen initialisation** — `_ChatScreenState.initState()` calls
    `_initApiService()`, which calls `ApiService.fromStorage()`. This reads
-   the saved `api_base_url` and `api_token` from local storage and
+   the saved `api_base_url` and `oidc_subject_token` from local storage and
    constructs an `ApiService` with an `OidcTokenExchangeAuthProvider`.
    If no base URL is configured, a `StateError` is silently caught and
    `_apiService` remains `null`.
@@ -107,7 +107,7 @@ Flutter-based mobile client for the
 |---------------|----------------------|-----------|
 | `api_base_url`| SharedPreferences    | No        |
 | `owner_id`    | SharedPreferences    | No        |
-| `api_token`   | FlutterSecureStorage | Yes       |
+| `oidc_subject_token` | FlutterSecureStorage | Yes |
 
 The `owner_id` is a 16-character random alphanumeric string generated
 on first launch and persisted permanently.
