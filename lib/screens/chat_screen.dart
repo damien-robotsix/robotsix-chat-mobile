@@ -6,7 +6,6 @@ import '../main.dart';
 import '../models/api_exception.dart';
 import '../models/chat_event.dart';
 import '../models/chat_message.dart';
-import '../models/chat_session.dart';
 import '../services/api_service.dart';
 import '../services/auth_provider.dart';
 import '../services/http_retry_wrapper.dart';
@@ -17,6 +16,7 @@ import '../widgets/chat_message_bubble.dart';
 import '../widgets/session_bar.dart';
 import '../widgets/session_drawer.dart';
 import '../widgets/summary_card.dart';
+import 'chat_session_controller.dart';
 
 /// Chat screen backed by [ApiService] with SSE streaming and
 /// session management.
@@ -71,16 +71,20 @@ class _ChatScreenState extends State<ChatScreen> {
   /// full transcript is reached via an explicit expand affordance.
   bool _showSummary = true;
 
-  // Session management state
-  List<ChatSession> _sessions = [];
-  bool _sessionsLoading = false;
-  String? _sessionsError;
+  // Session list, loading/error state and session CRUD.
+  late final ChatSessionController _sessions = ChatSessionController(
+    apiProvider: () => _apiService,
+    onAuthExpired: () {
+      if (mounted) _showReLoginPrompt();
+    },
+  );
 
   StreamSubscription<bool>? _authSub;
 
   @override
   void initState() {
     super.initState();
+    _sessions.addListener(_onSessionsChanged);
     _initApiService();
     // Re-initialise the API client whenever auth state becomes true (e.g.
     // after SSO login), so the chat screen stops using a stale token-less
@@ -98,7 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initApiService() async {
     try {
       _apiService = await ApiService.fromStorage();
-      if (mounted) _loadSessions();
+      if (mounted) _sessions.loadSessions();
     } on StateError {
       // No base URL configured; API calls will fail gracefully
       // with a helpful error message.
@@ -109,67 +113,34 @@ class _ChatScreenState extends State<ChatScreen> {
   // Session management
   // ------------------------------------------------------------------
 
-  Future<void> _loadSessions() async {
-    if (_apiService == null) return;
-    setState(() {
-      _sessionsLoading = true;
-      _sessionsError = null;
-    });
+  void _onSessionsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Report a failed session operation: an expired login shows its message
+  /// and the re-login prompt; other API errors are prefixed with
+  /// [failurePrefix]. Anything else propagates to the caller.
+  Future<void> _runSessionAction(
+    String failurePrefix,
+    Future<void> Function() action,
+  ) async {
     try {
-      final list = await _apiService!.listSessions();
-      if (mounted) {
-        setState(() {
-          _sessions = list;
-          _sessionsLoading = false;
-        });
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          _sessionsError = e.message;
-          _sessionsLoading = false;
-        });
-        _showReLoginPrompt();
-      }
+      await action();
     } on ApiException catch (e) {
-      if (mounted) {
-        setState(() {
-          _sessionsError = e.message;
-          _sessionsLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _sessionsError = '$e';
-          _sessionsLoading = false;
-        });
-      }
+      if (!mounted) return;
+      final text = e is AuthException
+          ? describeSessionError(e)
+          : '$failurePrefix: ${describeSessionError(e)}';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      if (e is AuthException) _showReLoginPrompt();
     }
   }
 
   Future<void> _createSession() async {
-    if (_apiService == null) return;
-    try {
-      final session = await _apiService!.createSession();
-      if (mounted) {
-        _switchToSession(session.sessionId);
-        _loadSessions();
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-        _showReLoginPrompt();
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Create session failed: ${e.message}')),
-        );
-      }
-    }
+    await _runSessionAction('Create session failed', () async {
+      final session = await _sessions.createSession();
+      if (session != null && mounted) _switchToSession(session.sessionId);
+    });
   }
 
   /// Transforms raw history entries into [ChatMessage] models, advancing the
@@ -226,51 +197,22 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _deleteSession(String sessionId) async {
-    if (_apiService == null) return;
-    try {
-      await _apiService!.deleteSession(sessionId);
-      if (_sessionId == sessionId) {
+    await _runSessionAction('Delete session failed', () async {
+      final deleted = await _sessions.deleteSession(sessionId);
+      if (deleted && mounted && _sessionId == sessionId) {
         setState(() {
           _sessionId = null;
           _messages.clear();
         });
       }
-      _loadSessions();
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-        _showReLoginPrompt();
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delete session failed: ${e.message}')),
-        );
-      }
-    }
+    });
   }
 
   Future<void> _closeSession(String sessionId) async {
-    if (_apiService == null) return;
-    try {
-      await _apiService!.closeSession(sessionId);
-      _loadSessions();
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-        _showReLoginPrompt();
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Close session failed: ${e.message}')),
-        );
-      }
-    }
+    await _runSessionAction(
+      'Close session failed',
+      () => _sessions.closeSession(sessionId),
+    );
   }
 
   // ------------------------------------------------------------------
@@ -327,6 +269,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _authSub?.cancel();
+    _sessions.dispose();
     _activeStream?.cancel();
     _controller.dispose();
     _scrollController.dispose();
@@ -354,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _isLoading = false;
         });
         _activeStream = null;
-        _loadSessions();
+        _sessions.loadSessions();
       case ErrorEvent(:final message, :final code):
         _handleStreamError(agentMsgId, 'Error [$code]: $message');
     }
@@ -522,7 +465,7 @@ class _ChatScreenState extends State<ChatScreen> {
             tooltip: 'Sessions',
             onPressed: () {
               Scaffold.of(context).openDrawer();
-              _loadSessions();
+              _sessions.loadSessions();
             },
           ),
         ),
@@ -540,11 +483,11 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       drawer: SessionDrawer(
-        loading: _sessionsLoading,
-        error: _sessionsError,
-        sessions: _sessions,
+        loading: _sessions.loading,
+        error: _sessions.error,
+        sessions: _sessions.sessions,
         activeSessionId: _sessionId,
-        onRetry: _loadSessions,
+        onRetry: _sessions.loadSessions,
         onCreateSession: _createSession,
         onSwitchSession: _switchToSession,
         onCloseSession: _closeSession,
@@ -612,14 +555,5 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  String _sessionTitle() {
-    final id = _sessionId;
-    if (id == null) return 'Conversation';
-    for (final s in _sessions) {
-      if (s.sessionId == id && s.title != null && s.title!.isNotEmpty) {
-        return s.title!;
-      }
-    }
-    return 'Conversation';
-  }
+  String _sessionTitle() => _sessions.titleOf(_sessionId) ?? 'Conversation';
 }
