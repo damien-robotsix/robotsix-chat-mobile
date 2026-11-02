@@ -21,23 +21,45 @@ lib/
   main.dart                       # App entry point, routing
   screens/
     chat_screen.dart              # Chat UI with SSE streaming
-    settings_screen.dart          # Backend URL / credential config
+    chat_session_controller.dart  # Session list state and CRUD
+    settings_screen.dart          # Backend URL / SSO login
+    subsessions_screen.dart       # Subsessions & monitors view
   models/
+    api_exception.dart            # ApiException / AuthException
+    chat_event.dart               # SSE events (token, done, error)
     chat_message.dart             # Message data model
+    chat_session.dart             # Session data model
+    subsession.dart               # Subsession data model
   services/
     api_service.dart              # HTTP + SSE client with token auth
     auth_provider.dart            # Pluggable auth (OIDC token exchange)
+    http_retry_wrapper.dart       # Retry with backoff for transient errors
+    observability.dart            # Crashlytics error telemetry
     update_service.dart           # In-app update check
+  widgets/
+    chat_input_bar.dart           # Message input and send button
+    chat_message_bubble.dart      # Single message bubble
+    session_bar.dart              # Active session indicator
+    session_drawer.dart           # Session list drawer
+    session_tile.dart             # Session row in the drawer
+    summary_card.dart             # Compact conversation summary
 docs/
   architecture.md                 # Component diagram and data flow
-  configuration.md                # Stored config keys reference
   auto-update.md                  # Auto-update and provisioning
+  configuration.md                # Stored config keys reference
+  modules.yaml                    # Module registration manifest
+  release-process.md              # Release-please and APK publishing
 test/
   widget_test.dart                # Smoke test
-  models/
-  screens/
-  services/
+  models/                         # Model unit tests
+  screens/                        # Screen and controller tests
+  services/                       # Service unit tests
+  widgets/                        # Widget tests
 ```
+
+Test files mirror `lib/` as `<name>_test.dart`. See
+[docs/architecture.md](docs/architecture.md) for how the pieces fit
+together.
 
 ## Documentation
 
