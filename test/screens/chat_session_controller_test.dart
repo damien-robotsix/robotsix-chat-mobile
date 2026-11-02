@@ -123,6 +123,116 @@ void main() {
       );
       verifyNever(() => api.listSessions());
     });
+
+    test('closeSession closes and refreshes', () async {
+      when(() => api.closeSession('s-1')).thenAnswer((_) async {});
+
+      await controller.closeSession('s-1');
+      await pumpEventQueue();
+
+      verify(() => api.closeSession('s-1')).called(1);
+      verify(() => api.listSessions()).called(1);
+    });
+
+    test('createSession rethrows API failures without refreshing', () async {
+      when(() => api.createSession()).thenThrow(const ApiException(500, 'no'));
+
+      await expectLater(
+        controller.createSession(),
+        throwsA(isA<ApiException>()),
+      );
+      verifyNever(() => api.listSessions());
+    });
+
+    test('deleteSession rethrows auth failures without refreshing', () async {
+      when(
+        () => api.deleteSession('s-1'),
+      ).thenThrow(const AuthException(401, 'expired'));
+
+      await expectLater(
+        controller.deleteSession('s-1'),
+        throwsA(isA<AuthException>()),
+      );
+      verifyNever(() => api.listSessions());
+    });
+  });
+
+  group('without an API client', () {
+    late ChatSessionController idle;
+
+    setUp(() => idle = ChatSessionController(apiProvider: () => null));
+    tearDown(() => idle.dispose());
+
+    test('createSession returns null', () async {
+      expect(await idle.createSession(), isNull);
+    });
+
+    test('deleteSession returns false', () async {
+      expect(await idle.deleteSession('s-1'), isFalse);
+    });
+
+    test('closeSession completes without error', () async {
+      await idle.closeSession('s-1');
+      expect(idle.sessions, isEmpty);
+    });
+
+    test('fetchHistory returns an empty list', () async {
+      expect(await idle.fetchHistory('s-1'), isEmpty);
+    });
+  });
+
+  group('loadSessions empty state', () {
+    test('an empty server list yields no sessions and no error', () async {
+      when(() => api.listSessions()).thenAnswer((_) async => []);
+
+      await controller.loadSessions();
+
+      expect(controller.sessions, isEmpty);
+      expect(controller.error, isNull);
+      expect(controller.titleOf('s-1'), isNull);
+    });
+
+    test('a reload clears a previous error', () async {
+      when(() => api.listSessions()).thenThrow(const ApiException(500, 'down'));
+      await controller.loadSessions();
+      expect(controller.error, 'down');
+
+      when(() => api.listSessions()).thenAnswer((_) async => [_session]);
+      await controller.loadSessions();
+
+      expect(controller.error, isNull);
+      expect(controller.sessions, [_session]);
+    });
+  });
+
+  group('fetchHistory (switch session)', () {
+    test('returns the history for the requested session', () async {
+      final history = [
+        {'role': 'user', 'content': 'hi'},
+        {'role': 'assistant', 'content': 'hello'},
+      ];
+      when(() => api.getHistory('s-1')).thenAnswer((_) async => history);
+
+      expect(await controller.fetchHistory('s-1'), history);
+      verify(() => api.getHistory('s-1')).called(1);
+    });
+
+    test('returns an empty history for a new session', () async {
+      when(() => api.getHistory('s-1')).thenAnswer((_) async => []);
+
+      expect(await controller.fetchHistory('s-1'), isEmpty);
+    });
+
+    test('rethrows API failures', () async {
+      when(
+        () => api.getHistory('s-1'),
+      ).thenThrow(const ApiException(404, 'gone'));
+
+      await expectLater(
+        controller.fetchHistory('s-1'),
+        throwsA(isA<ApiException>()),
+      );
+    });
   });
 
   test('titleOf returns the known title or null', () async {

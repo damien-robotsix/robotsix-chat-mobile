@@ -14,8 +14,8 @@ String describeSessionError(Object error) =>
     error is ApiException ? error.message : '$error';
 
 /// Owns the session list shown in the chat drawer: the loaded
-/// [sessions], their [loading] / [error] state, and the create / delete /
-/// close operations.
+/// [sessions], their [loading] / [error] state, the create / delete /
+/// close operations, and the history fetch used when switching sessions.
 ///
 /// The [ApiService] is supplied lazily through [apiProvider] because the
 /// chat screen re-creates its client after login. Every operation is a
@@ -82,6 +82,15 @@ class ChatSessionController extends ChangeNotifier {
     if (api == null) return;
     await api.closeSession(sessionId);
     unawaited(loadSessions());
+  }
+
+  /// Fetch the raw message history of [sessionId] when switching to it.
+  /// Returns an empty list when no API client is configured. API failures
+  /// are rethrown to the caller.
+  Future<List<Map<String, dynamic>>> fetchHistory(String sessionId) async {
+    final api = apiProvider();
+    if (api == null) return const [];
+    return api.getHistory(sessionId);
   }
 
   /// Title of [sessionId] if it is known and non-empty, else `null`.

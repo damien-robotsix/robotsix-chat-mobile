@@ -179,7 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _showSummary = true;
     });
     try {
-      final history = await _apiService!.getHistory(sessionId);
+      final history = await _sessions.fetchHistory(sessionId);
       if (!mounted) return;
       final parsed = _parseHistory(history);
       setState(() {
