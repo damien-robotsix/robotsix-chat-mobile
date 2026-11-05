@@ -18,7 +18,7 @@ Flutter-based mobile client for the
 │  (chat_screen)   │   │ (settings_screen)    │
 │                  │   │                      │
 │ - Message list   │   │ - Backend URL config │
-│ - SSE streaming  │   │ - API token config   │
+│ - SSE streaming  │   │ - SSO login          │
 │ - Send button    │   │ - Update check       │
 └────────┬─────────┘   └──────────┬───────────┘
          │                        │
@@ -47,19 +47,42 @@ Flutter-based mobile client for the
 ┌─────────────────┐   ┌──────────────────────────┐
 │ SharedPreferences│   │ FlutterSecureStorage     │
 │                  │   │                          │
-│ - api_base_url   │   │ - api_token (encrypted)  │
-│ - owner_id       │   │                          │
+│ - api_base_url   │   │ - oidc_subject_token     │
+│ - owner_id       │   │   (encrypted)            │
 └─────────────────┘   └──────────────────────────┘
 ```
+
+## Source layout
+
+- **Screens** (`lib/screens/`) — `ChatScreen`, `SettingsScreen` and
+  `SubsessionsScreen` (subsessions and monitors of the active session,
+  route `/subsessions`).
+- **Session controller** (`lib/screens/chat_session_controller.dart`) —
+  `ChatSessionController`, a `ChangeNotifier` that owns the drawer's
+  session list, its loading/error state and the create / delete / close
+  operations. `ChatScreen` listens to it and keeps only UI wiring and
+  message streaming. `describeSessionError()` maps any failure to a
+  user-facing message.
+- **Widgets** (`lib/widgets/`) — reusable pieces of the chat UI:
+  `ChatInputBar`, `ChatMessageBubble`, `SessionBar`, `SessionDrawer`,
+  `SessionTile` and `SummaryCard`.
+- **Models** (`lib/models/`) — `ChatMessage`, `ChatSession`,
+  `Subsession`, the `ChatEvent` SSE event types and
+  `ApiException` / `AuthException`.
+- **Services** (`lib/services/`) — `ApiService`, `AuthProvider`,
+  `UpdateService`, `withRetry()` / `isTransientError()`
+  (`http_retry_wrapper.dart`, retry with backoff for transient
+  failures) and `Observability` (Crashlytics error telemetry).
 
 ## Data flow: sending a message
 
 1. **App start** — `main.dart` creates a `MaterialApp` with routes for
-   `/` (ChatScreen) and `/settings` (SettingsScreen).
+   `/` (ChatScreen), `/settings` (SettingsScreen) and `/subsessions`
+   (SubsessionsScreen).
 
 2. **ChatScreen initialisation** — `_ChatScreenState.initState()` calls
    `_initApiService()`, which calls `ApiService.fromStorage()`. This reads
-   the saved `api_base_url` and `api_token` from local storage and
+   the saved `api_base_url` and `oidc_subject_token` from local storage and
    constructs an `ApiService` with an `OidcTokenExchangeAuthProvider`.
    If no base URL is configured, a `StateError` is silently caught and
    `_apiService` remains `null`.
@@ -76,7 +99,8 @@ Flutter-based mobile client for the
    - **TokenEvent** → appends content to the agent placeholder message
      via `_appendToMessage()`.
    - **DoneEvent** → records the `sessionId` for subsequent messages,
-     clears the loading state.
+     clears the loading state, and refreshes the session list through
+     `ChatSessionController.loadSessions()`.
    - **ErrorEvent** → displays the backend error message via
      `_handleStreamError()`.
 
@@ -107,7 +131,7 @@ Flutter-based mobile client for the
 |---------------|----------------------|-----------|
 | `api_base_url`| SharedPreferences    | No        |
 | `owner_id`    | SharedPreferences    | No        |
-| `api_token`   | FlutterSecureStorage | Yes       |
+| `oidc_subject_token` | FlutterSecureStorage | Yes |
 
 The `owner_id` is a 16-character random alphanumeric string generated
 on first launch and persisted permanently.
