@@ -16,6 +16,7 @@ jobs:
   analyze:
     name: analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -38,6 +39,7 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -58,6 +60,9 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
+    # Gradle + Android SDK setup and a cold debug APK build can exceed 15 minutes
+    # on a cache miss; allow headroom without falling back to the 6-hour default.
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -85,6 +90,7 @@ jobs:
   osv-scan:
     name: osv-scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
