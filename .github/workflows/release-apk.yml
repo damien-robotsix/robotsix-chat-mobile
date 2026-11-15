@@ -46,6 +46,29 @@ jobs:
 
       - run: flutter pub get
 
+      # android/app/build.gradle falls back to debug signing when no release
+      # keystore is configured (convenient for local builds). In CI that would
+      # silently publish a debug-signed APK that the in-app updater offers but
+      # Android refuses to install over the release-signed app, so fail fast
+      # when any signing secret is missing.
+      - name: Check release signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          missing=()
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "::error title=Missing release signing secrets::Required secret(s) not set: ${missing[*]}. Refusing to build a debug-signed release APK."
+            exit 1
+          fi
+
       - name: Build signed release APK
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -58,6 +81,24 @@ jobs:
         # monotonically increasing CI run number so each release installs cleanly
         # as an upgrade.
         run: flutter build apk --build-number="$BUILD_NUMBER"
+
+      # Defence in depth: never upload an APK signed with the Android debug
+      # certificate, even if the Gradle fallback is hit for another reason.
+      - name: Verify APK is not debug-signed
+        run: |
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          build_tools_dir=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          apksigner="$build_tools_dir/apksigner"
+          if [ ! -x "$apksigner" ]; then
+            echo "::error title=apksigner not found::No apksigner under $ANDROID_HOME/build-tools."
+            exit 1
+          fi
+          certs=$("$apksigner" verify --print-certs "$apk")
+          echo "$certs"
+          if grep -q "CN=Android Debug" <<<"$certs"; then
+            echo "::error title=Debug-signed release APK::$apk is signed with the Android debug certificate. Refusing to publish it."
+            exit 1
+          fi
 
       # `gh release upload` fails if the APK is missing, so an absent build
       # output cannot silently produce an asset-less release.
