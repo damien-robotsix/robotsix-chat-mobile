@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.6.0...robotsix_chat_mobile-v0.6.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* Disable or scope Android Auto Backup in AndroidManifest.xml (20261115T201037Z-disable-or-scope-android-auto-backup-in-6589) ([#123](https://github.com/damien-robotsix/robotsix-chat-mobile/issues/123)) ([b193c27](https://github.com/damien-robotsix/robotsix-chat-mobile/commit/b193c27343129ed71f72f4eafc13583ef72b2589))
+
 ## [0.6.0](https://github.com/damien-robotsix/robotsix-chat-mobile/compare/robotsix_chat_mobile-v0.5.0...robotsix_chat_mobile-v0.6.0) (2026-09-21)
 
 
